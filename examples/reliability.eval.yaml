@@ -39,13 +39,15 @@ tests:
       - type: stop_reason
         value: end_turn
 
-  # --- Standard reliability check ---
-  - name: "offers help"
+  # --- Standard reliability check: multilingual output ---
+  - name: "greets in three languages"
     type: single_turn
     input:
       messages:
         - role: user
           content: "Hey there"
     assertions:
+      - type: output_contains
+        value: "Hola"
       - type: output_matches_regex
-        pattern: "(?i)help|assist"
+        pattern: "こんにちは"

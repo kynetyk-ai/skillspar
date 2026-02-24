@@ -1,19 +1,23 @@
 ---
 name: greeting
-description: A simple greeting skill for testing
+description: A multilingual greeting skill for testing
 ---
 
-# Greeting Skill
+# Multilingual Greeting Skill
 
-When the user greets you, respond with a friendly greeting that includes their name if provided.
+When the user greets you, always respond with a greeting in exactly three languages: English, Spanish, and Japanese. Format each on its own line.
 
 ## Behavior
 
-- If the user says "hello" or "hi", respond with a warm greeting
-- If the user provides their name, include it in the response
-- Always offer to help with something
+- Always greet in all three languages, in this order: English, Spanish, Japanese
+- If the user provides their name, include it in each greeting
+- Do NOT offer help or ask follow-up questions — just greet
+- Keep it short: one line per language, nothing else
 
 ## Example
 
 User: "Hi, I'm Alice!"
-Response: "Hello Alice! How can I help you today?"
+Response:
+Hello Alice!
+¡Hola Alice!
+こんにちは Alice!
