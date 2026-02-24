@@ -1,4 +1,4 @@
-# Skill Evaluator
+# Skillspar
 
 Declarative testing harness for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) Agent Skills.
 
@@ -10,7 +10,7 @@ When developing Claude Code Agent Skills (SKILL.md packages), testing is manual:
 
 ## The Solution
 
-Skill Evaluator lets you write declarative test suites in `.eval.yaml` files that specify:
+Skillspar lets you write declarative test suites in `.eval.yaml` files that specify:
 - What **messages** to send (conversation scenarios)
 - What **tools** the skill has access to (mock schemas with scripted responses)
 - What **assertions** to check (tool calls, output content, argument patterns, LLM-judged quality)
@@ -20,7 +20,7 @@ The CLI executes these suites against the Anthropic API directly — no Claude C
 ## Quick Start
 
 ```bash
-pip install skill-evaluator
+pip install skillspar
 ```
 
 Create a test suite (`my-skill.eval.yaml`):
@@ -49,7 +49,28 @@ tests:
 Run it:
 
 ```bash
-skill-eval run my-skill.eval.yaml
+skillspar run my-skill.eval.yaml
+```
+
+### Repeated Runs & Reliability
+
+Run each test multiple times to measure consistency:
+
+```bash
+skillspar run my-skill.eval.yaml --runs 10 --concurrency 4 --output results.json
+```
+
+```yaml
+defaults:
+  runs: 5              # run each test 5 times
+  pass_threshold: 0.8  # pass if >= 80% of runs pass
+  concurrency: 4       # max parallel API calls
+
+tests:
+  - name: "critical behavior"
+    type: single_turn
+    baseline: true      # also run without skill for comparison
+    # ...
 ```
 
 ## How It Works
@@ -79,7 +100,7 @@ YAML Config → Skill Parser → Test Executor → Assertion Engine → Reporter
 
 ## Test Definition Format
 
-See [`examples/basic.eval.yaml`](examples/basic.eval.yaml) for a complete example.
+See [`examples/basic.eval.yaml`](examples/basic.eval.yaml) for a complete example and [`examples/reliability.eval.yaml`](examples/reliability.eval.yaml) for repeated runs with baseline comparison.
 
 ### Assertion Types
 
@@ -133,8 +154,8 @@ tool_responses:
 ## Development
 
 ```bash
-git clone <repo-url>
-cd skill-evaluator
+git clone https://github.com/kynetyk-ai/skillspar.git
+cd skillspar
 pip install -e ".[dev]"
 pytest
 ```
@@ -145,4 +166,4 @@ See [ROADMAP.md](ROADMAP.md) for the phased implementation plan.
 
 ## License
 
-MIT
+[MIT](LICENSE)

@@ -11,7 +11,7 @@ from skill_evaluator.runner import SuiteRunner
 
 
 @click.group()
-@click.version_option(package_name="skill-evaluator")
+@click.version_option(package_name="skillspar")
 def main():
     """Declarative testing harness for Claude Code Agent Skills."""
 
