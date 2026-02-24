@@ -19,6 +19,9 @@ venv/
 htmlcov/
 .coverage
 
+# Results
+results/
+
 # OS
 .DS_Store
 

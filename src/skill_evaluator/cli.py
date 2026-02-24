@@ -1,13 +1,27 @@
-"""CLI entry point for skill-eval."""
+"""CLI entry point for skillspar."""
 
+import os
+import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from skill_evaluator.config.loader import ConfigLoadError, load_eval_suite
 from skill_evaluator.reporting.console import ConsoleReporter
 from skill_evaluator.runner import SuiteRunner
+
+
+def _slugify(name: str) -> str:
+    """Convert a suite name to a filename-safe slug."""
+    slug = name.lower().strip()
+    slug = re.sub(r"[^\w\s-]", "", slug)
+    slug = re.sub(r"[\s_-]+", "-", slug)
+    return slug.strip("-")
 
 
 @click.group()
@@ -22,7 +36,7 @@ def main():
 @click.option(
     "--concurrency", type=int, default=None, help="Override suite default for max parallel API calls."
 )
-@click.option("--output", type=click.Path(), default=None, help="Write JSON report to file.")
+@click.option("--output", type=click.Path(), default=None, help="Directory for JSON report output.")
 def run(eval_file, runs, concurrency, output):
     """Run an eval suite from a .eval.yaml file."""
     try:
@@ -42,13 +56,22 @@ def run(eval_file, runs, concurrency, output):
     reporter = ConsoleReporter()
     reporter.report(suite_result)
 
-    if output is not None:
+    output_dir = output or os.environ.get("SKILLSPAR_OUTPUT")
+    if output_dir is not None:
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        slug = _slugify(suite.suite)
+        filename = f"{slug}_{timestamp}.json"
+        resolved = Path(output_dir).resolve() / filename
+    else:
+        resolved = None
+
+    if resolved is not None:
         from skill_evaluator.reporting.json_report import JsonReporter
 
         json_reporter = JsonReporter()
         report = json_reporter.build_report(suite, suite_result)
-        json_reporter.write(report, Path(output))
-        click.echo(f"JSON report written to {output}")
+        json_reporter.write(report, resolved)
+        click.echo(f"JSON report written to {resolved}")
 
     if not suite_result.all_passed:
         sys.exit(1)
