@@ -1,0 +1,51 @@
+# Reliability eval suite demonstrating repeated runs, baseline, and thresholds.
+# This tests a greeting skill with statistical confidence.
+
+suite: "greeting skill reliability"
+skill: "./sample-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0.7
+  runs: 5
+  pass_threshold: 0.8
+  max_retries: 2
+  concurrency: 4
+
+tests:
+  # --- Repeated runs with baseline comparison ---
+  - name: "greets with name"
+    type: single_turn
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Hi, I'm Alice!"
+    assertions:
+      - type: output_contains
+        value: "Alice"
+
+  # --- Critical test: must always pass ---
+  - name: "always responds politely"
+    type: single_turn
+    runs: 10
+    pass_threshold: 1.0
+    input:
+      messages:
+        - role: user
+          content: "Hello!"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+
+  # --- Standard reliability check ---
+  - name: "offers help"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Hey there"
+    assertions:
+      - type: output_matches_regex
+        pattern: "(?i)help|assist"

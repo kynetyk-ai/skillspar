@@ -1,0 +1,45 @@
+"""Tests for assertions/evaluator.py — dispatch and error handling."""
+
+from skill_evaluator.assertions.base import AssertionStatus
+from skill_evaluator.assertions.evaluator import evaluate_assertions
+from skill_evaluator.config.schema import (
+    LLMJudgeAssertion,
+    OutputContainsAssertion,
+    StopReasonAssertion,
+    ToolSequenceAssertion,
+)
+
+
+class TestEvaluateAssertions:
+    def test_dispatches_to_handler(self, simple_text_trace):
+        assertions = [
+            StopReasonAssertion(type="stop_reason", value="end_turn"),
+            OutputContainsAssertion(type="output_contains", value="Alice"),
+        ]
+        results = evaluate_assertions(assertions, simple_text_trace)
+        assert len(results) == 2
+        assert all(r.status == AssertionStatus.PASSED for r in results)
+
+    def test_skips_unimplemented_types(self, simple_text_trace):
+        assertions = [
+            ToolSequenceAssertion(type="tool_sequence", tools=["Read", "Write"]),
+        ]
+        results = evaluate_assertions(assertions, simple_text_trace)
+        assert len(results) == 1
+        assert results[0].status == AssertionStatus.SKIPPED
+
+    def test_llm_judge_skipped(self, simple_text_trace):
+        assertions = [
+            LLMJudgeAssertion(type="llm_judge", criteria="Is the response friendly?"),
+        ]
+        results = evaluate_assertions(assertions, simple_text_trace)
+        assert results[0].status == AssertionStatus.SKIPPED
+
+    def test_mixed_results(self, simple_text_trace):
+        assertions = [
+            StopReasonAssertion(type="stop_reason", value="end_turn"),
+            OutputContainsAssertion(type="output_contains", value="NOTFOUND"),
+        ]
+        results = evaluate_assertions(assertions, simple_text_trace)
+        assert results[0].status == AssertionStatus.PASSED
+        assert results[1].status == AssertionStatus.FAILED

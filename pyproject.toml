@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "skill-evaluator"
+version = "0.1.0"
+description = "Declarative testing harness for Claude Code Agent Skills"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+keywords = ["claude", "anthropic", "testing", "skills", "evaluation"]
+dependencies = [
+    "anthropic>=0.39.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "jsonpath-ng>=1.6.0",
+    "click>=8.1",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+skill-eval = "skill_evaluator.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/skill_evaluator"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

@@ -1,0 +1,84 @@
+# Multi-turn eval suite demonstrating advanced features.
+# This tests a hypothetical skill that creates files.
+
+suite: "file creator skill"
+skill: "./sample-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0
+
+tools:
+  - builtin: Read
+  - builtin: Write
+
+tests:
+  # --- Single-turn with tool assertions ---
+  - name: "creates a file when asked"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Create a file called hello.txt with the content 'Hello World'"
+    assertions:
+      - type: tool_called
+        tool: Write
+      - type: tool_args_match
+        tool: Write
+        path: "$.file_path"
+        pattern: "hello\\.txt$"
+
+  # --- Single-turn with conversation history ---
+  - name: "continues from prior context"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Create a greeting file"
+        - role: assistant
+          content: "I'll create that for you."
+          tool_calls:
+            - id: "tc_001"
+              name: Write
+              input:
+                file_path: "/project/greeting.txt"
+                content: "Hello!"
+        - role: tool_result
+          tool_use_id: "tc_001"
+          content: "File written successfully"
+        - role: user
+          content: "Now add a goodbye message to it"
+    assertions:
+      - type: tool_called
+        tool: Write
+
+  # --- Multi-turn with scripted tool responses ---
+  - name: "reads then writes a modified file"
+    type: multi_turn
+    max_turns: 5
+    input:
+      messages:
+        - role: user
+          content: "Read hello.txt and add a timestamp to it"
+    tool_responses:
+      - match:
+          tool: Read
+        response:
+          content: "Hello World"
+      - match:
+          tool: Write
+        response:
+          content: "File written successfully"
+      - match: "*"
+        response:
+          content: "OK"
+    assertions:
+      - type: tool_sequence
+        tools: [Read, Write]
+      - type: tool_called_times
+        tool: Read
+        exactly: 1
+      - type: tool_called_times
+        tool: Write
+        exactly: 1
