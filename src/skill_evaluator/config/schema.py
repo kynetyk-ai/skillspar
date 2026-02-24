@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Annotated, Any, Literal, Union
 
 from pydantic import BaseModel, Field, field_validator
+
+DEFAULT_MODEL = os.environ.get("SKILLSPAR_MODEL", "claude-sonnet-4-5-20250929")
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +219,7 @@ TestConfig = Annotated[
 # ---------------------------------------------------------------------------
 
 class SuiteDefaults(BaseModel):
-    model: str = "claude-sonnet-4-5-20250929"
+    model: str = DEFAULT_MODEL
     max_tokens: int = 4096
     temperature: float = 0
     runs: int = 1
