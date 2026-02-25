@@ -95,6 +95,27 @@ class SuiteRunner:
             return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
         return prompt
 
+    def _skill_cache_control(self) -> dict[str, str] | None:
+        """Return cache_control for the skill message when a prefix is present and caching is on."""
+        if not self.config.enable_caching or self.suite.conversation_prefix is None:
+            return None
+        return {"type": "ephemeral"}
+
+    def _merge_messages(
+        self,
+        skill_messages: list[MessageConfig],
+        prefix_messages: list[MessageConfig],
+        context_messages: list[MessageConfig],
+        test_messages: list[MessageConfig],
+    ) -> list[MessageConfig]:
+        """Merge skill, prefix, context, and test messages in the correct order."""
+        if (
+            self.suite.conversation_prefix
+            and self.suite.conversation_prefix.skill_position == "bottom"
+        ):
+            return prefix_messages + skill_messages + context_messages + test_messages
+        return skill_messages + prefix_messages + context_messages + test_messages
+
     def run(self) -> SuiteResult:
         """Run all tests and return results."""
         run_id = str(uuid.uuid4())
@@ -109,11 +130,16 @@ class SuiteRunner:
         # Load conversation prefix (once, shared across all tests)
         self._prefix_messages: list[MessageConfig] = []
         if self.suite.conversation_prefix is not None:
+            # In bottom mode, the skill message is the cache boundary,
+            # so skip caching on the last prefix message.
+            prefix_caching = self.config.enable_caching and (
+                self.suite.conversation_prefix.skill_position != "bottom"
+            )
             try:
                 self._prefix_messages = load_prefix_messages(
                     self.eval_file,
                     self.suite.conversation_prefix,
-                    enable_caching=self.config.enable_caching,
+                    enable_caching=prefix_caching,
                 )
                 token_est = estimate_prefix_tokens(self._prefix_messages)
                 if token_est < MINIMUM_CACHE_TOKEN_THRESHOLD:
@@ -238,11 +264,10 @@ class SuiteRunner:
                 ],
             )
 
-        skill_messages = build_skill_messages(skill_body) if skill_body else []
+        skill_cache = self._skill_cache_control()
+        skill_messages = build_skill_messages(skill_body, cache_control=skill_cache) if skill_body else []
         prefix_messages = list(self._prefix_messages)
-        merged_messages = (
-            skill_messages + prefix_messages + context_messages + list(test.input.messages)
-        )
+        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, list(test.input.messages))
         input_config = InputConfig(messages=merged_messages)
 
         system_prompt = self._build_system_prompt()
@@ -303,11 +328,10 @@ class SuiteRunner:
                 ],
             )
 
-        skill_messages = build_skill_messages(skill_body) if skill_body else []
+        skill_cache = self._skill_cache_control()
+        skill_messages = build_skill_messages(skill_body, cache_control=skill_cache) if skill_body else []
         prefix_messages = list(self._prefix_messages)
-        merged_messages = (
-            skill_messages + prefix_messages + context_messages + list(test.input.messages)
-        )
+        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, list(test.input.messages))
         input_config = InputConfig(messages=merged_messages)
 
         system_prompt = self._build_system_prompt()

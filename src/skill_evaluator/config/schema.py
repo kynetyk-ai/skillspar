@@ -279,6 +279,7 @@ class SuiteDefaults(BaseModel):
 class ConversationPrefixConfig(BaseModel):
     """Configuration for prepending a simulated conversation to test messages."""
 
+    skill_position: Literal["top", "bottom"] = "top"
     messages: list[MessageConfig] | None = None
     file: str | None = None
 

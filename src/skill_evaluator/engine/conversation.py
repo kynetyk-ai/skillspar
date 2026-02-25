@@ -9,13 +9,15 @@ class ConversationBuildError(Exception):
     """Raised when messages cannot be converted to API format."""
 
 
-def build_skill_messages(skill_body: str) -> list[MessageConfig]:
+def build_skill_messages(
+    skill_body: str, *, cache_control: dict[str, str] | None = None
+) -> list[MessageConfig]:
     """Build a user message containing the skill body with contextual framing."""
     framed = (
         "The following skill has been activated for this task:\n\n"
         f"{skill_body}"
     )
-    return [MessageConfig(role="user", content=framed)]
+    return [MessageConfig(role="user", content=framed, cache_control=cache_control)]
 
 
 def build_messages(messages: list[MessageConfig]) -> list[dict]:

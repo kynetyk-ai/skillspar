@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class TestResult:
+    __test__ = False
     test_name: str
     assertion_results: list[AssertionResult] = field(default_factory=list)
     trace: Trace | None = None
@@ -54,6 +55,7 @@ class TestResult:
 
 @dataclass
 class TestRunGroup:
+    __test__ = False
     test_name: str
     runs: list[TestResult]
     baseline_runs: list[TestResult] | None = None

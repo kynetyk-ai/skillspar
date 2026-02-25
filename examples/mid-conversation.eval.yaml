@@ -11,6 +11,10 @@ defaults:
   enable_caching: true
 
 conversation_prefix:
+  # skill_position controls where the skill is injected relative to the prefix:
+  #   top (default): Skill → Prefix → Test (skill diluted by conversation)
+  #   bottom:        Prefix → Skill → Test (skill closer to test input)
+  # skill_position: bottom
   messages:
     # Simulated prior coding session — 3 user/assistant exchanges
     - role: user
