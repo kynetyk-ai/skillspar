@@ -130,11 +130,12 @@ class SuiteRunner:
         # Load conversation prefix (once, shared across all tests)
         self._prefix_messages: list[MessageConfig] = []
         if self.suite.conversation_prefix is not None:
-            # In bottom mode, the skill message is the cache boundary,
-            # so skip caching on the last prefix message.
-            prefix_caching = self.config.enable_caching and (
-                self.suite.conversation_prefix.skill_position != "bottom"
-            )
+            # Cache the prefix as a shared breakpoint across all runs.
+            # In bottom mode (Prefix → Skill → ...), both prefix and skill
+            # get independent cache_control markers — the API supports
+            # multiple breakpoints, so consecutive skill runs cache both
+            # and baseline runs still hit the prefix cache.
+            prefix_caching = self.config.enable_caching
             try:
                 self._prefix_messages = load_prefix_messages(
                     self.eval_file,
@@ -152,18 +153,28 @@ class SuiteRunner:
                 logger.error("Failed to load conversation prefix: %s", e)
                 raise
 
-        # Build work items
+        # Build work items — grouped by variant for cache efficiency.
+        # All skill runs first, then all baseline runs, so consecutive
+        # API calls share the same message prefix and hit the cache.
         work_items: list[_WorkItem] = []
+
+        # Pass 1: skill runs
         for idx, test in enumerate(self.suite.tests):
             runs = self._effective_runs(test)
             for run_i in range(runs):
                 work_items.append(
                     _WorkItem(idx, test, run_i, is_baseline=False, skill_body=skill_body)
                 )
-                if test.baseline:
-                    work_items.append(
-                        _WorkItem(idx, test, run_i, is_baseline=True, skill_body="")
-                    )
+
+        # Pass 2: baseline runs
+        for idx, test in enumerate(self.suite.tests):
+            if not test.baseline:
+                continue
+            runs = self._effective_runs(test)
+            for run_i in range(runs):
+                work_items.append(
+                    _WorkItem(idx, test, run_i, is_baseline=True, skill_body="")
+                )
 
         logger.debug("Built %d work items", len(work_items))
 

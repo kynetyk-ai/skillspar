@@ -622,6 +622,46 @@ tests:
         baseline_text = str(baseline_call_messages)
         assert "The following skill has been activated" not in baseline_text
 
+    def test_baseline_work_items_grouped_for_caching(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """All skill runs execute before any baseline runs for cache efficiency."""
+        call_order = []
+
+        def track_calls(**kwargs):
+            messages_str = str(kwargs.get("messages", ""))
+            has_skill = "The following skill has been activated" in messages_str
+            call_order.append("skill" if has_skill else "baseline")
+            return mock_anthropic_message(text="Hello!")
+
+        mock_anthropic_client.messages.create.side_effect = track_calls
+        yaml = """
+suite: "test"
+skill: "./skills/SKILL.md"
+defaults:
+  runs: 3
+tests:
+  - type: single_turn
+    name: "grouped test"
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Hi"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        eval_file = self._make_suite_files(tmp_path, yaml)
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        # 3 skill + 3 baseline = 6 calls
+        assert len(call_order) == 6
+        # All skill runs should come before all baseline runs
+        assert call_order == ["skill", "skill", "skill", "baseline", "baseline", "baseline"]
+
     def test_per_test_runs_override(
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):

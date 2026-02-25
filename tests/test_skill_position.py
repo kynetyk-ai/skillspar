@@ -221,7 +221,9 @@ class TestBottomMode:
         skill_block = content[0]
         assert skill_block.get("cache_control") == {"type": "ephemeral"}
 
-    def test_prefix_messages_no_cache_control(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+    def test_last_prefix_message_has_cache_control(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+        """In bottom mode, the last prefix message gets cache_control as a shared
+        breakpoint across skill and baseline runs."""
         eval_file = _make_suite_files(tmp_path, skill_position="bottom")
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hi")
 
@@ -232,12 +234,10 @@ class TestBottomMode:
         messages = _get_api_messages(mock_anthropic_client)
         # Prefix user message (index 0) — no cache_control
         assert "cache_control" not in str(messages[0])
-        # Prefix assistant message (index 1) — no cache_control
+        # Prefix assistant message (index 1) — last prefix msg gets cache_control
         assistant_content = messages[1]["content"]
-        if isinstance(assistant_content, list):
-            for block in assistant_content:
-                assert block.get("cache_control") is None
-        # (string content has no cache_control by definition)
+        assert isinstance(assistant_content, list)
+        assert assistant_content[-1].get("cache_control") == {"type": "ephemeral"}
 
 
 class TestNoPrefixNoSkillCache:
