@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from anthropic import Anthropic
 
@@ -14,18 +15,21 @@ from skill_evaluator.config.schema import (
     EvalSuite,
     InputConfig,
     MessageConfig,
+    MultiTurnTest,
     SingleTurnTest,
 )
 from skill_evaluator.engine.context import ContextFileError, build_context_messages
+from skill_evaluator.engine.multi_turn import MultiTurnExecutor
 from skill_evaluator.engine.single_turn import SingleTurnExecutor
 from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 from skill_evaluator.skill.parser import parse_skill
+from skill_evaluator.tools.registry import resolve_tools
 
 
 @dataclass
 class _WorkItem:
     test_index: int
-    test: SingleTurnTest
+    test: SingleTurnTest | MultiTurnTest
     run_index: int
     is_baseline: bool
     system_prompt: str
@@ -44,10 +48,10 @@ class SuiteRunner:
         self.suite = suite
         self.client = client or Anthropic(max_retries=suite.defaults.max_retries)
 
-    def _effective_runs(self, test: SingleTurnTest) -> int:
+    def _effective_runs(self, test: SingleTurnTest | MultiTurnTest) -> int:
         return test.runs if test.runs is not None else self.suite.defaults.runs
 
-    def _effective_threshold(self, test: SingleTurnTest) -> float:
+    def _effective_threshold(self, test: SingleTurnTest | MultiTurnTest) -> float:
         return (
             test.pass_threshold
             if test.pass_threshold is not None
@@ -60,13 +64,11 @@ class SuiteRunner:
         skill = parse_skill(skill_path)
         system_prompt = skill.body
 
-        executor = SingleTurnExecutor(self.client, self.suite.defaults)
+        suite_tools = resolve_tools(self.suite.tools)
 
         # Build work items
         work_items: list[_WorkItem] = []
         for idx, test in enumerate(self.suite.tests):
-            if not isinstance(test, SingleTurnTest):
-                continue
             runs = self._effective_runs(test)
             for run_i in range(runs):
                 work_items.append(
@@ -83,12 +85,12 @@ class SuiteRunner:
 
         if concurrency <= 1:
             for item in work_items:
-                result = self._execute_work_item(item, executor)
+                result = self._execute_work_item(item, suite_tools)
                 results_map[(item.test_index, item.run_index, item.is_baseline)] = result
         else:
             with ThreadPoolExecutor(max_workers=concurrency) as pool:
                 future_to_item = {
-                    pool.submit(self._execute_work_item, item, executor): item
+                    pool.submit(self._execute_work_item, item, suite_tools): item
                     for item in work_items
                 }
                 for future in as_completed(future_to_item):
@@ -100,14 +102,6 @@ class SuiteRunner:
         # Assemble into TestRunGroups
         suite_result = SuiteResult(suite_name=self.suite.suite)
         for idx, test in enumerate(self.suite.tests):
-            if not isinstance(test, SingleTurnTest):
-                group = TestRunGroup(
-                    test_name=test.name,
-                    runs=[TestResult(test_name=test.name)],
-                )
-                suite_result.test_results.append(group)
-                continue
-
             runs_count = self._effective_runs(test)
             threshold = self._effective_threshold(test)
 
@@ -131,11 +125,15 @@ class SuiteRunner:
         return suite_result
 
     def _execute_work_item(
-        self, item: _WorkItem, executor: SingleTurnExecutor
+        self, item: _WorkItem, suite_tools: list[dict[str, Any]]
     ) -> TestResult:
-        return self._run_single_turn(item.test, executor, item.system_prompt)
+        if isinstance(item.test, MultiTurnTest):
+            return self._run_multi_turn(item.test, item.system_prompt, suite_tools)
+        return self._run_single_turn(item.test, item.system_prompt, suite_tools)
 
-    def _resolve_context(self, test: SingleTurnTest) -> list[MessageConfig]:
+    def _resolve_context_for(
+        self, test: SingleTurnTest | MultiTurnTest
+    ) -> list[MessageConfig]:
         """Merge suite-level and test-level context, build synthetic messages."""
         context_files = list(self.suite.context or []) + list(test.context or [])
         if not context_files:
@@ -145,12 +143,12 @@ class SuiteRunner:
     def _run_single_turn(
         self,
         test: SingleTurnTest,
-        executor: SingleTurnExecutor,
         system_prompt: str,
+        suite_tools: list[dict[str, Any]],
     ) -> TestResult:
         """Execute a single-turn test and evaluate its assertions."""
         try:
-            context_messages = self._resolve_context(test)
+            context_messages = self._resolve_context_for(test)
         except ContextFileError as e:
             from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
 
@@ -169,6 +167,64 @@ class SuiteRunner:
         if context_messages:
             merged_messages = context_messages + list(test.input.messages)
             input_config = InputConfig(messages=merged_messages)
+
+        executor = SingleTurnExecutor(self.client, self.suite.defaults)
+        try:
+            trace = executor.execute(
+                system_prompt, input_config, tools=suite_tools or None
+            )
+        except Exception as e:
+            from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
+
+            return TestResult(
+                test_name=test.name,
+                assertion_results=[
+                    AssertionResult(
+                        status=AssertionStatus.ERROR,
+                        assertion_type="execution",
+                        message=f"Execution failed: {e}",
+                    )
+                ],
+            )
+
+        assertion_results = evaluate_assertions(test.assertions, trace)
+        return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)
+
+    def _run_multi_turn(
+        self,
+        test: MultiTurnTest,
+        system_prompt: str,
+        suite_tools: list[dict[str, Any]],
+    ) -> TestResult:
+        """Execute a multi-turn test and evaluate its assertions."""
+        try:
+            context_messages = self._resolve_context_for(test)
+        except ContextFileError as e:
+            from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
+
+            return TestResult(
+                test_name=test.name,
+                assertion_results=[
+                    AssertionResult(
+                        status=AssertionStatus.ERROR,
+                        assertion_type="context",
+                        message=f"Context file error: {e}",
+                    )
+                ],
+            )
+
+        input_config = test.input
+        if context_messages:
+            merged_messages = context_messages + list(test.input.messages)
+            input_config = InputConfig(messages=merged_messages)
+
+        executor = MultiTurnExecutor(
+            client=self.client,
+            defaults=self.suite.defaults,
+            tools=suite_tools or None,
+            tool_responses=test.tool_responses,
+            max_turns=test.max_turns,
+        )
 
         try:
             trace = executor.execute(system_prompt, input_config)

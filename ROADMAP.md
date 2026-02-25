@@ -23,18 +23,18 @@ Core infrastructure for running single-turn eval suites.
 
 **Milestone**: `skill-eval run examples/basic.eval.yaml` produces pass/fail output. ✅
 
-## Phase 2: Multi-Turn + Mock Responses
+## Phase 2: Multi-Turn + Mock Responses ✅
 
 Agentic loop execution with scripted tool responses.
 
-- [ ] Built-in tool schemas (Read, Write, Edit, Bash, Glob, Grep)
-- [ ] Tool response matcher (match by tool name, JSONPath on args, wildcards)
+- [x] Built-in tool schemas (Read, Write, Edit, Bash, Glob, Grep)
+- [x] Tool response matcher (match by tool name, wildcards, null catch-all)
 - [ ] Response sequences (different responses for repeated calls to same tool)
-- [ ] MultiTurnExecutor (loop: API call → match tool calls → inject responses → repeat)
-- [ ] Extended assertions: `tool_sequence`, `tool_called_times`, `tool_args_match`, `turn_count`
+- [x] MultiTurnExecutor (loop: API call → match tool calls → inject responses → repeat)
+- [x] Extended assertions: `tool_sequence`, `tool_called_times`, `tool_args_match`, `turn_count`
 - [x] Suite defaults with per-test overrides (model, max_tokens, temperature) — *done in Phase 1*
 
-**Milestone**: Multi-turn eval suites with scripted tool responses execute correctly.
+**Milestone**: Multi-turn eval suites with scripted tool responses execute correctly. ✅
 
 ## Phase 3: LLM Judge + CI Integration
 

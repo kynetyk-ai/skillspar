@@ -68,11 +68,20 @@ tests:
         assert result.all_passed is False
         assert result.failed_count == 1
 
-    def test_multi_turn_skipped(self, tmp_path, mock_anthropic_client):
-        """Multi-turn tests are skipped in Phase 1."""
+    def test_multi_turn_executes(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+        """Multi-turn tests execute with tool mocking."""
         skill_dir = tmp_path / "skills"
         skill_dir.mkdir()
         (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nBody")
+
+        # Model calls Read, then finishes
+        tool_msg = mock_anthropic_message(
+            text="Reading file.",
+            tool_uses=[{"id": "tc_001", "name": "Read", "input": {"file_path": "/f.txt"}}],
+            stop_reason="tool_use",
+        )
+        final_msg = mock_anthropic_message(text="Done!", stop_reason="end_turn")
+        mock_anthropic_client.messages.create.side_effect = [tool_msg, final_msg]
 
         yaml_content = """
 suite: "test"
@@ -80,6 +89,111 @@ skill: "./skills/SKILL.md"
 tests:
   - type: multi_turn
     name: "multi turn test"
+    max_turns: 5
+    input:
+      messages:
+        - role: user
+          content: "Read something"
+    tool_responses:
+      - match: "*"
+        response:
+          content: "file data"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+      - type: tool_called
+        tool: Read
+"""
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        result = runner.run()
+
+        assert len(result.test_results) == 1
+        assert result.all_passed is True
+        assert result.test_results[0].runs[0].trace is not None
+        assert result.test_results[0].runs[0].trace.turn_count == 2
+
+    def test_multi_turn_two_turns_with_assertions(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """Multi-turn with Read -> Write sequence and structural assertions."""
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nBody")
+
+        read_msg = mock_anthropic_message(
+            text="Reading.",
+            tool_uses=[{"id": "tc_001", "name": "Read", "input": {"file_path": "/a.txt"}}],
+            stop_reason="tool_use",
+        )
+        write_msg = mock_anthropic_message(
+            text="Writing.",
+            tool_uses=[{"id": "tc_002", "name": "Write", "input": {"file_path": "/a.txt", "content": "new"}}],
+            stop_reason="tool_use",
+        )
+        final_msg = mock_anthropic_message(text="All done.", stop_reason="end_turn")
+        mock_anthropic_client.messages.create.side_effect = [read_msg, write_msg, final_msg]
+
+        yaml_content = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: multi_turn
+    name: "read then write"
+    max_turns: 5
+    input:
+      messages:
+        - role: user
+          content: "Modify a file"
+    tool_responses:
+      - match:
+          tool: Read
+        response:
+          content: "original content"
+      - match:
+          tool: Write
+        response:
+          content: "File written"
+    assertions:
+      - type: tool_sequence
+        tools: [Read, Write]
+      - type: tool_called_times
+        tool: Read
+        exactly: 1
+      - type: turn_count
+        min: 2
+"""
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        result = runner.run()
+
+        assert result.all_passed is True
+
+    def test_multi_turn_baseline(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """Multi-turn tests support baseline comparison."""
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nBody")
+
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
+            text="Done!", stop_reason="end_turn"
+        )
+
+        yaml_content = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: multi_turn
+    name: "baseline multi"
+    baseline: true
     input:
       messages:
         - role: user
@@ -95,9 +209,54 @@ tests:
         runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
         result = runner.run()
 
-        # Multi-turn test has empty results — treated as SKIP
-        assert len(result.test_results) == 1
-        assert result.test_results[0].status_label == "SKIP"
+        group = result.test_results[0]
+        assert len(group.runs) == 1
+        assert group.baseline_runs is not None
+        assert len(group.baseline_runs) == 1
+
+    def test_multi_turn_no_match_error_handled(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """NoMatchError is caught and reported as execution error."""
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir()
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nBody")
+
+        tool_msg = mock_anthropic_message(
+            text="Calling Bash.",
+            tool_uses=[{"id": "tc_001", "name": "Bash", "input": {"command": "ls"}}],
+            stop_reason="tool_use",
+        )
+        mock_anthropic_client.messages.create.return_value = tool_msg
+
+        yaml_content = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: multi_turn
+    name: "no match"
+    input:
+      messages:
+        - role: user
+          content: "Run bash"
+    tool_responses:
+      - match:
+          tool: Read
+        response:
+          content: "data"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        result = runner.run()
+
+        assert result.all_passed is False
+        assert result.test_results[0].runs[0].assertion_results[0].assertion_type == "execution"
 
     def test_execution_error_handled(self, tmp_path, mock_anthropic_client):
         eval_file = self._make_suite_files(tmp_path)
@@ -231,7 +390,7 @@ tests:
 
         call_kwargs = mock_anthropic_client.messages.create.call_args
         messages = call_kwargs.kwargs["messages"]
-        # Should have: user (context intro) → assistant (with 2 tool_calls) → user (2 tool_results + test msg)
+        # Should have: user (context intro) -> assistant (with 2 tool_calls) -> user (2 tool_results + test msg)
         assert len(messages) == 3
         # Assistant message should have 2 tool_use blocks (suite + test context)
         assistant_content = messages[1]["content"]

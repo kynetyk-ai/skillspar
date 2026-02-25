@@ -22,7 +22,7 @@ class TestEvaluateAssertions:
 
     def test_skips_unimplemented_types(self, simple_text_trace):
         assertions = [
-            ToolSequenceAssertion(type="tool_sequence", tools=["Read", "Write"]),
+            LLMJudgeAssertion(type="llm_judge", criteria="Is the response friendly?"),
         ]
         results = evaluate_assertions(assertions, simple_text_trace)
         assert len(results) == 1
@@ -43,3 +43,18 @@ class TestEvaluateAssertions:
         results = evaluate_assertions(assertions, simple_text_trace)
         assert results[0].status == AssertionStatus.PASSED
         assert results[1].status == AssertionStatus.FAILED
+
+    def test_tool_sequence_dispatches(self, multi_turn_trace):
+        assertions = [
+            ToolSequenceAssertion(type="tool_sequence", tools=["Read", "Write"]),
+        ]
+        results = evaluate_assertions(assertions, multi_turn_trace)
+        assert len(results) == 1
+        assert results[0].status == AssertionStatus.PASSED
+
+    def test_tool_sequence_fails(self, multi_turn_trace):
+        assertions = [
+            ToolSequenceAssertion(type="tool_sequence", tools=["Write", "Read"]),
+        ]
+        results = evaluate_assertions(assertions, multi_turn_trace)
+        assert results[0].status == AssertionStatus.FAILED

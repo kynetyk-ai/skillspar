@@ -11,14 +11,24 @@ from skill_evaluator.assertions.deterministic import (
     check_tool_called,
     check_tool_not_called,
 )
+from skill_evaluator.assertions.structural import (
+    check_tool_args_match,
+    check_tool_called_times,
+    check_tool_sequence,
+    check_turn_count,
+)
 from skill_evaluator.config.schema import (
     AssertionConfig,
     OutputContainsAssertion,
     OutputMatchesRegexAssertion,
     OutputNotContainsAssertion,
     StopReasonAssertion,
+    ToolArgsMatchAssertion,
     ToolCalledAssertion,
+    ToolCalledTimesAssertion,
     ToolNotCalledAssertion,
+    ToolSequenceAssertion,
+    TurnCountAssertion,
 )
 from skill_evaluator.engine.trace import Trace
 
@@ -29,6 +39,10 @@ _HANDLERS: dict = {
     OutputMatchesRegexAssertion: check_output_matches_regex,
     ToolCalledAssertion: check_tool_called,
     ToolNotCalledAssertion: check_tool_not_called,
+    ToolCalledTimesAssertion: check_tool_called_times,
+    ToolArgsMatchAssertion: check_tool_args_match,
+    ToolSequenceAssertion: check_tool_sequence,
+    TurnCountAssertion: check_turn_count,
 }
 
 
