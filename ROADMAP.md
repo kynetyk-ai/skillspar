@@ -13,7 +13,7 @@ Core infrastructure for running single-turn eval suites.
 - [x] Conversation builder (YAML messages to Anthropic API message format)
 - [x] Trace data model (captures API response, tool calls, token usage)
 - [x] SingleTurnExecutor (one `messages.create()` call, returns Trace)
-- [x] Basic assertions: `tool_called`, `tool_not_called`, `output_contains`, `output_matches_regex`, `stop_reason`
+- [x] Basic assertions: `tool_called`, `tool_not_called`, `output_contains`, `output_not_contains`, `output_matches_regex`, `stop_reason`
 - [x] Console reporter (Rich-based pass/fail output)
 - [x] CLI entry point: `skill-eval run <file.yaml>`
 - [x] Working example suite with a synthetic test skill

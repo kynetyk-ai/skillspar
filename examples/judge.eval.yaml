@@ -1,0 +1,56 @@
+# LLM judge eval suite demonstrating quality assertions.
+# Uses a second API call to evaluate response quality against criteria.
+
+suite: "greeting skill quality"
+skill: "./sample-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0
+
+tests:
+  # --- Structural + judge: greeting tone ---
+  - name: "greeting is warm and friendly"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Hello!"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+      - type: llm_judge
+        criteria: >
+          The response should feel warm and friendly, not robotic or overly formal.
+          It should greet the user naturally in multiple languages.
+
+  # --- Judge: personalization quality ---
+  - name: "personalized greeting feels natural"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Hi, I'm Alice!"
+    assertions:
+      - type: output_contains
+        value: "Alice"
+      - type: llm_judge
+        criteria: >
+          The response should incorporate the user's name naturally into each
+          greeting, not just append it mechanically. Each language greeting
+          should feel like a native speaker wrote it.
+
+  # --- Judge: format compliance ---
+  - name: "follows three-language format"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Hey there"
+    assertions:
+      - type: llm_judge
+        criteria: >
+          The response must contain exactly three greetings, one per line,
+          in this order: English, Spanish, Japanese. There should be no
+          extra text, follow-up questions, or offers to help.
