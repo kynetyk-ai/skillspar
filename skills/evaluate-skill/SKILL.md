@@ -61,7 +61,12 @@ Subjective claims (tone, helpfulness, thoroughness) must use `llm_judge`. Never 
 
 1. **Write the `.eval.yaml`** using the Write tool, placed alongside or near the target SKILL.md.
 2. **Write any context files** referenced by the suite.
-3. **Summarize**: total test count, claims covered with their tests, any untestable claims with explanation, and assertion type distribution.
+3. **Validate the suite** by running:
+   ```bash
+   python skills/evaluate-skill/scripts/validate_eval.py <path-to-your-eval.yaml>
+   ```
+   This checks both schema correctness and common semantic mistakes (mismatched tool_result ids, undeclared tools in assertions, multi_turn without tool_responses, etc.). If validation fails, fix the reported errors and re-run until it passes. The error messages explain exactly what's wrong and how to fix it.
+4. **Summarize**: total test count, claims covered with their tests, any untestable claims with explanation, and assertion type distribution.
 
 ## References
 
