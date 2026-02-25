@@ -97,6 +97,40 @@ Run it:
 skillspar run my-skill.eval.yaml
 ```
 
+### Multi-Suite Execution
+
+Run all eval suites in a directory, or pass multiple files and globs:
+
+```bash
+# Run all eval files in a directory (recursive)
+skillspar run examples/
+
+# Run specific files
+skillspar run greet.eval.yaml review.eval.yaml
+
+# Mix files and directories
+skillspar run greet.eval.yaml examples/advanced/
+
+# Write a combined report
+skillspar run examples/ --output results.json
+```
+
+When multiple suites are discovered, skillspar runs each sequentially and prints an aggregated dashboard:
+
+```
+Multi-Suite Summary
+
+ Suite                      Status  Tests   Cost
+ greeting skill basics      PASS    4/4     $0.12
+ code review skill          FAIL    7/9     $0.85
+ mid-conversation tests     PASS    3/3     $0.23
+
+3 suites: 1 failed, 2 passed
+Total cost: $1.20
+```
+
+A failure in one suite does not abort others. Exit codes: 0 = all pass, 1 = any test failures, 2 = any config/validation errors (takes priority over 1).
+
 ### Repeated Runs & Reliability
 
 Run each test multiple times to measure consistency and compare against baseline:
@@ -189,6 +223,40 @@ tool_responses:
   - match: "*"
     response: { content: "OK" }
 ```
+
+## Interpreting Results
+
+### Exit Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | All tests passed |
+| 1 | One or more tests failed |
+| 2 | Configuration or validation error (bad YAML, missing skill file, no matching tests) |
+
+In multi-suite runs, exit code 2 takes priority over 1 — if any suite has a config error, the run exits with 2 even if other suites had test failures.
+
+### Reading Pass/Fail Output
+
+Each test shows a pass/fail indicator and, for multi-run tests, the pass rate:
+
+```
+  ✓ responds with greeting
+  ✗ follows formatting rules  3/5 passed (threshold: 80%)
+    baseline: 1/5 passed
+```
+
+**Baseline interpretation**: If your skill passes 5/5 and baseline passes 1/5, the skill is doing real work. If both pass at similar rates, the skill may not be adding value.
+
+### Iterative Refinement Workflow
+
+1. **Start with `/evaluate-skill`** to generate an initial test suite from your SKILL.md.
+2. **Run the suite** with `skillspar run` — identify which tests fail and why.
+3. **Tighten flaky tests**: If a test passes inconsistently, increase `runs` and set an appropriate `pass_threshold`. Use `llm_judge` instead of brittle substring assertions for subjective quality.
+4. **Add baseline**: Enable `baseline: true` on key tests to confirm your skill adds value beyond the model's default behavior.
+5. **Use watch mode** during active development: `skillspar watch suite.eval.yaml` re-runs on every save.
+6. **Snapshot and diff** to track progress: `skillspar snapshot diff --latest suite.eval.yaml` shows what changed between runs.
+7. **Run all suites** before merging: `skillspar run examples/` validates the full skill library.
 
 ## Development
 

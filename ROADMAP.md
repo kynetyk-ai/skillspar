@@ -156,21 +156,21 @@ assertion flips between iterations.
 
 **Milestone**: `skillspar watch suite.yaml` re-runs on save and shows live pass/fail output. ✅
 
-## Phase 4F: CI, Multi-Suite & Documentation
+## Phase 4F: CI, Multi-Suite & Documentation ✅
 
 Multi-suite execution for team-scale usage, plus documentation that reflects the now-stable
 schema and feature set.
 
-- [ ] Multi-suite runner: `skillspar run` accepts multiple files, globs, or directories
-- [ ] Multi-suite summary reporter: aggregated dashboard view across a skill library
+- [x] Multi-suite runner: `skillspar run` accepts multiple files, globs, or directories
+- [x] Multi-suite summary reporter: aggregated dashboard view across a skill library
       (table of suite name, pass/fail, cost, baseline delta)
-- [ ] CLI result interpretation guidance (reading pass/fail output, understanding baseline deltas)
-- [ ] Iterative refinement workflow (improving suites based on test results: flaky tests,
+- [x] CLI result interpretation guidance (reading pass/fail output, understanding baseline deltas)
+- [x] Iterative refinement workflow (improving suites based on test results: flaky tests,
       weak assertions, missing coverage)
-- [ ] Documentation refresh and README re-evaluation
+- [x] Documentation refresh and README re-evaluation
 
 **Milestone**: `skillspar run examples/` runs all suites with an aggregated summary, and
-documentation covers the full feature set.
+documentation covers the full feature set. ✅
 
 ## Phase 5: Release Readiness + PyPI (Future)
 
