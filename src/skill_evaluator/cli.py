@@ -1,9 +1,11 @@
 """CLI entry point for skillspar."""
 
+import json
 import logging
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -67,7 +69,7 @@ def main():
 
 
 @main.command()
-@click.argument("eval_file", type=click.Path(exists=True))
+@click.argument("eval_files", nargs=-1, required=True)
 @click.option("--runs", type=int, default=None, help="Override suite default for runs per test.")
 @click.option(
     "--concurrency", type=int, default=None, help="Override suite default for max parallel API calls."
@@ -95,26 +97,73 @@ def main():
     default=None,
     help="Set logging verbosity (default: WARNING).",
 )
-def run(eval_file, runs, concurrency, output, output_format, filter_pattern, model, verbose, log_level):
-    """Run an eval suite from a .eval.yaml file."""
+def run(eval_files, runs, concurrency, output, output_format, filter_pattern, model, verbose, log_level):
+    """Run eval suites from .eval.yaml files.
+
+    Accepts one or more files, directories, or glob patterns. Directories are
+    searched recursively for *.eval.yaml files.
+    """
     from dotenv import load_dotenv
 
-    load_dotenv()
+    from skill_evaluator.discovery import DiscoveryError, resolve_eval_paths
 
+    load_dotenv()
     _setup_logging(log_level)
 
-    try:
-        suite = load_eval_suite(eval_file)
-    except ConfigLoadError as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(2)
-
-    # Resolve format before config so we can pass it through
+    # Resolve format
     if output_format is None:
         if output and Path(output).suffix == ".xml":
             output_format = "junit"
         else:
             output_format = "json"
+
+    try:
+        resolved_paths = resolve_eval_paths(eval_files)
+    except DiscoveryError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
+
+    if len(resolved_paths) == 1:
+        _run_single_suite(
+            resolved_paths[0],
+            runs=runs,
+            concurrency=concurrency,
+            output=output,
+            output_format=output_format,
+            filter_pattern=filter_pattern,
+            model=model,
+            verbose=verbose,
+        )
+    else:
+        _run_multi_suite(
+            resolved_paths,
+            runs=runs,
+            concurrency=concurrency,
+            output=output,
+            output_format=output_format,
+            filter_pattern=filter_pattern,
+            model=model,
+            verbose=verbose,
+        )
+
+
+def _run_single_suite(
+    eval_file: Path,
+    *,
+    runs,
+    concurrency,
+    output,
+    output_format,
+    filter_pattern,
+    model,
+    verbose,
+) -> None:
+    """Run a single eval suite — preserves original single-file behavior."""
+    try:
+        suite = load_eval_suite(eval_file)
+    except ConfigLoadError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
 
     config = resolve_config(
         suite.defaults,
@@ -136,7 +185,7 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
             sys.exit(2)
 
     try:
-        suite_result = execute_suite(Path(eval_file), suite, config)
+        suite_result = execute_suite(eval_file, suite, config)
     except (SkillParseError, PrefixLoadError) as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(2)
@@ -174,6 +223,75 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
             click.echo(f"JSON report written to {resolved}")
 
     if not suite_result.all_passed:
+        sys.exit(1)
+
+
+def _run_multi_suite(
+    eval_files: list[Path],
+    *,
+    runs,
+    concurrency,
+    output,
+    output_format,
+    filter_pattern,
+    model,
+    verbose,
+) -> None:
+    """Run multiple eval suites with aggregated reporting."""
+    from skill_evaluator.multi_suite import run_suites
+    from skill_evaluator.reporting.multi_suite_report import (
+        build_multi_suite_json_report,
+        build_multi_suite_junit_report,
+        display_multi_suite_summary,
+    )
+
+    result = run_suites(
+        eval_files,
+        cli_runs=runs,
+        cli_concurrency=concurrency,
+        cli_model=model,
+        cli_output=output,
+        cli_output_format=output_format,
+        cli_verbose=verbose,
+        cli_filter_pattern=filter_pattern,
+    )
+
+    # Print per-suite results as they were collected
+    reporter = ConsoleReporter(verbose=verbose)
+    for outcome in result.outcomes:
+        if outcome.error is not None:
+            click.echo(f"\nError in {outcome.eval_file}: {outcome.error}", err=True)
+        elif outcome.suite_result is not None:
+            reporter.report(
+                outcome.suite_result,
+                cost_summary=outcome.cost_summary,
+                cache_summary=outcome.cache_summary,
+            )
+
+    # Aggregated dashboard
+    display_multi_suite_summary(result, verbose=verbose)
+
+    # Write combined report
+    if output is not None:
+        output_path = Path(output).resolve()
+        if output_format == "junit":
+            junit_root = build_multi_suite_junit_report(result)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            tree = ET.ElementTree(junit_root)
+            ET.indent(tree, space="  ")
+            tree.write(output_path, encoding="unicode", xml_declaration=True)
+            click.echo(f"JUnit report written to {output_path}")
+        else:
+            report = build_multi_suite_json_report(result)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, "w") as f:
+                json.dump(report, f, indent=2)
+            click.echo(f"JSON report written to {output_path}")
+
+    # Exit codes: 2 = config errors (takes priority), 1 = test failures, 0 = all pass
+    if result.has_config_errors:
+        sys.exit(2)
+    if not result.all_passed:
         sys.exit(1)
 
 
