@@ -33,7 +33,7 @@ Agentic loop execution with scripted tool responses.
 
 - [x] Built-in tool schemas (Read, Write, Edit, Bash, Glob, Grep)
 - [x] Tool response matcher (match by tool name, wildcards, null catch-all)
-- [ ] Response sequences (different responses for repeated calls to same tool)
+- [x] Response sequences (different responses for repeated calls to same tool)
 - [x] MultiTurnExecutor (loop: API call → match tool calls → inject responses → repeat)
 - [x] Extended assertions: `tool_sequence`, `tool_called_times`, `tool_args_match`, `turn_count`
 - [x] Suite defaults with per-test overrides (model, max_tokens, temperature) — *done in Phase 1*
@@ -63,6 +63,7 @@ A SKILL.md that guides Claude Code through analyzing a target skill and generati
 - [ ] Skill structure analysis: extract behavioral claims, tool-use patterns, examples, constraints
 - [ ] Automated test scenario generation with baseline enabled by default
 - [ ] `.eval.yaml` generation from skill analysis
+- [ ] Assertion type guidance: auto-generator should propose `llm_judge` for subjective quality criteria (tone, naturalness, completeness) and deterministic assertions for structural behaviors (tool calls, sequences, output keywords). Documentation should advise users that `output_contains`/`output_matches_regex` are brittle proxies for subjective quality and will break across model updates.
 - [ ] CLI result interpretation and feedback loop
 - [ ] PyPI packaging and distribution
 - [ ] Example suites for real-world skills that demonstrate measurable steer

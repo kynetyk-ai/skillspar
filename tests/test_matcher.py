@@ -77,3 +77,61 @@ class TestMatchToolResponse:
         ]
         assert match_tool_response(_tc("Read"), responses) == {"content": "specific"}
         assert match_tool_response(_tc("Write"), responses) == {"content": "wildcard"}
+
+    def test_sequence_returns_in_order(self):
+        responses = [
+            ToolResponseConfig(
+                match=ToolMatchConfig(tool="Read"),
+                responses=[{"content": "first"}, {"content": "second"}, {"content": "third"}],
+            ),
+        ]
+        counts: dict[int, int] = {}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "first"}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "second"}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "third"}
+
+    def test_sequence_clamps_to_last(self):
+        responses = [
+            ToolResponseConfig(
+                match=ToolMatchConfig(tool="Read"),
+                responses=[{"content": "one"}, {"content": "two"}],
+            ),
+        ]
+        counts: dict[int, int] = {}
+        match_tool_response(_tc("Read"), responses, counts)
+        match_tool_response(_tc("Read"), responses, counts)
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "two"}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "two"}
+
+    def test_independent_counters_per_rule(self):
+        responses = [
+            ToolResponseConfig(
+                match=ToolMatchConfig(tool="Read"),
+                responses=[{"content": "r1"}, {"content": "r2"}],
+            ),
+            ToolResponseConfig(
+                match=ToolMatchConfig(tool="Write"),
+                responses=[{"content": "w1"}, {"content": "w2"}],
+            ),
+        ]
+        counts: dict[int, int] = {}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "r1"}
+        assert match_tool_response(_tc("Write"), responses, counts) == {"content": "w1"}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "r2"}
+        assert match_tool_response(_tc("Write"), responses, counts) == {"content": "w2"}
+
+    def test_single_response_with_call_counts(self):
+        responses = [
+            ToolResponseConfig(match="*", response={"content": "static"}),
+        ]
+        counts: dict[int, int] = {}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "static"}
+        assert match_tool_response(_tc("Read"), responses, counts) == {"content": "static"}
+        assert counts[0] == 2
+
+    def test_no_call_counts_backward_compat(self):
+        responses = [
+            ToolResponseConfig(match="*", response={"content": "ok"}),
+        ]
+        assert match_tool_response(_tc("Read"), responses) == {"content": "ok"}
+        assert match_tool_response(_tc("Read"), responses) == {"content": "ok"}

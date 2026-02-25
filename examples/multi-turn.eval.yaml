@@ -82,3 +82,31 @@ tests:
       - type: tool_called_times
         tool: Write
         exactly: 1
+
+  # --- Multi-turn with response sequences (polling scenario) ---
+  - name: "polls until ready then writes"
+    type: multi_turn
+    max_turns: 8
+    input:
+      messages:
+        - role: user
+          content: "Check the status file /status.txt until it says 'ready', then write 'done' to /result.txt"
+    tool_responses:
+      - match:
+          tool: Read
+        responses:
+          - content: "pending"
+          - content: "pending"
+          - content: "ready"
+      - match:
+          tool: Write
+        response:
+          content: "File written successfully"
+      - match: "*"
+        response:
+          content: "OK"
+    assertions:
+      - type: tool_called
+        tool: Read
+      - type: tool_called
+        tool: Write

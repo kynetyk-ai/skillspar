@@ -193,3 +193,54 @@ class TestMultiTurnExecutor:
         assert final_msgs[2]["role"] == "user"
         # The tool_result user message should contain tool_result blocks
         assert final_msgs[2]["content"][0]["type"] == "tool_result"
+
+    def test_response_sequence(self, mock_anthropic_client, mock_anthropic_message):
+        """Model calls Read 3 times, gets 3 different responses, then finishes."""
+        read_msg_1 = mock_anthropic_message(
+            text="Reading file.",
+            tool_uses=[{"id": "tc_001", "name": "Read", "input": {"file_path": "/f"}}],
+            stop_reason="tool_use",
+        )
+        read_msg_2 = mock_anthropic_message(
+            text="Reading again.",
+            tool_uses=[{"id": "tc_002", "name": "Read", "input": {"file_path": "/f"}}],
+            stop_reason="tool_use",
+        )
+        read_msg_3 = mock_anthropic_message(
+            text="One more read.",
+            tool_uses=[{"id": "tc_003", "name": "Read", "input": {"file_path": "/f"}}],
+            stop_reason="tool_use",
+        )
+        final_msg = mock_anthropic_message(text="All done.", stop_reason="end_turn")
+        mock_anthropic_client.messages.create.side_effect = [
+            read_msg_1, read_msg_2, read_msg_3, final_msg,
+        ]
+
+        tool_responses = [
+            ToolResponseConfig(
+                match=ToolMatchConfig(tool="Read"),
+                responses=[
+                    {"content": "version-1"},
+                    {"content": "version-2"},
+                    {"content": "version-3"},
+                ],
+            ),
+        ]
+        executor = MultiTurnExecutor(
+            client=mock_anthropic_client,
+            defaults=_defaults(),
+            tool_responses=tool_responses,
+        )
+        trace = executor.execute("You are helpful.", _input())
+
+        assert trace.turn_count == 4
+        assert trace.stop_reason == "end_turn"
+
+        # Verify the tool_result content injected into messages for each turn
+        calls = mock_anthropic_client.messages.create.call_args_list
+        # Turn 2 messages should have tool_result with version-1
+        assert calls[1].kwargs["messages"][2]["content"][0]["content"] == "version-1"
+        # Turn 3 messages should have tool_result with version-2
+        assert calls[2].kwargs["messages"][4]["content"][0]["content"] == "version-2"
+        # Turn 4 messages should have tool_result with version-3
+        assert calls[3].kwargs["messages"][6]["content"][0]["content"] == "version-3"

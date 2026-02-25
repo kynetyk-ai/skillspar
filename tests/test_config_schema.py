@@ -16,6 +16,7 @@ from skill_evaluator.config.schema import (
     SuiteDefaults,
     ToolCalledAssertion,
     ToolNotCalledAssertion,
+    ToolResponseConfig,
 )
 
 
@@ -328,3 +329,58 @@ class TestPerTestOverrides:
         assert isinstance(test, SingleTurnTest)
         assert test.runs == 10
         assert test.baseline is True
+
+
+class TestToolResponseConfig:
+    def test_single_response_accepted(self):
+        tr = ToolResponseConfig(match="*", response={"content": "ok"})
+        assert tr.response == {"content": "ok"}
+        assert tr.responses is None
+
+    def test_responses_list_accepted(self):
+        tr = ToolResponseConfig(
+            match="*",
+            responses=[{"content": "a"}, {"content": "b"}],
+        )
+        assert tr.response is None
+        assert len(tr.responses) == 2
+
+    def test_both_provided_rejected(self):
+        with pytest.raises(ValidationError, match="not both"):
+            ToolResponseConfig(
+                match="*",
+                response={"content": "x"},
+                responses=[{"content": "y"}],
+            )
+
+    def test_neither_provided_rejected(self):
+        with pytest.raises(ValidationError, match="required"):
+            ToolResponseConfig(match="*")
+
+    def test_empty_responses_rejected(self):
+        with pytest.raises(ValidationError, match="must not be empty"):
+            ToolResponseConfig(match="*", responses=[])
+
+    def test_get_response_single(self):
+        tr = ToolResponseConfig(match="*", response={"content": "always"})
+        assert tr.get_response(0) == {"content": "always"}
+        assert tr.get_response(5) == {"content": "always"}
+
+    def test_get_response_sequence(self):
+        tr = ToolResponseConfig(
+            match="*",
+            responses=[{"content": "a"}, {"content": "b"}, {"content": "c"}],
+        )
+        assert tr.get_response(0) == {"content": "a"}
+        assert tr.get_response(1) == {"content": "b"}
+        assert tr.get_response(2) == {"content": "c"}
+
+    def test_get_response_clamps_to_last(self):
+        tr = ToolResponseConfig(
+            match="*",
+            responses=[{"content": "first"}, {"content": "last"}],
+        )
+        assert tr.get_response(0) == {"content": "first"}
+        assert tr.get_response(1) == {"content": "last"}
+        assert tr.get_response(2) == {"content": "last"}
+        assert tr.get_response(100) == {"content": "last"}

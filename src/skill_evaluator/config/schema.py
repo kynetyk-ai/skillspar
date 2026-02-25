@@ -6,7 +6,7 @@ import os
 import re
 from typing import Annotated, Any, Literal, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 DEFAULT_MODEL = os.environ.get("SKILLSPAR_MODEL", "claude-sonnet-4-5-20250929")
 
@@ -155,7 +155,26 @@ class ToolMatchConfig(BaseModel):
 
 class ToolResponseConfig(BaseModel):
     match: ToolMatchConfig | str
-    response: dict[str, Any]
+    response: dict[str, Any] | None = None
+    responses: list[dict[str, Any]] | None = None
+
+    @model_validator(mode="after")
+    def validate_response_fields(self) -> ToolResponseConfig:
+        has_response = self.response is not None
+        has_responses = self.responses is not None
+        if has_response and has_responses:
+            raise ValueError("Specify either 'response' or 'responses', not both")
+        if not has_response and not has_responses:
+            raise ValueError("One of 'response' or 'responses' is required")
+        if has_responses and len(self.responses) == 0:
+            raise ValueError("'responses' must not be empty")
+        return self
+
+    def get_response(self, call_index: int = 0) -> dict[str, Any]:
+        if self.response is not None:
+            return self.response
+        clamped = min(call_index, len(self.responses) - 1)
+        return self.responses[clamped]
 
 
 # ---------------------------------------------------------------------------

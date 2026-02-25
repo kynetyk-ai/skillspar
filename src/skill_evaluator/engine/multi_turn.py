@@ -39,6 +39,7 @@ class MultiTurnExecutor:
         """Run the agentic loop and return a Trace of all turns."""
         messages = build_messages(input_config.messages)
         trace = Trace()
+        call_counts: dict[int, int] = {}
 
         for _ in range(self.max_turns):
             kwargs: dict[str, Any] = {
@@ -80,7 +81,7 @@ class MultiTurnExecutor:
             # Match tool calls to scripted responses
             tool_result_blocks: list[dict[str, Any]] = []
             for tc in turn.tool_calls:
-                matched = match_tool_response(tc, self.tool_responses)
+                matched = match_tool_response(tc, self.tool_responses, call_counts)
                 tool_result_blocks.append({
                     "type": "tool_result",
                     "tool_use_id": tc.id,
