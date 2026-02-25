@@ -47,6 +47,7 @@ Subjective claims (tone, helpfulness, thoroughness) must use `llm_judge`. Never 
 - Set `baseline: true` on every test. Disable only when testing behavior the base model never exhibits; add a comment explaining why.
 - Default to `single_turn`. Use `multi_turn` only when the claim requires sequential tool calls with intermediate results.
 - Provide reference material as `tool_result` messages in conversation history, not as user-message context. Models weight information differently by source.
+- Consider adding a `conversation_prefix` when the skill is likely to be used mid-conversation (most skills are). A prefix simulates prior context to test whether the skill's steer persists after context dilution. This is optional — only suggest it if the skill's use case implies mid-session activation.
 
 ## D: Conventions
 

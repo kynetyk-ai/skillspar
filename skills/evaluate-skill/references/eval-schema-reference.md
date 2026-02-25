@@ -24,7 +24,39 @@ defaults:
   pass_threshold: 1.0                  # Fraction of runs that must pass (0.0, 1.0]
   max_retries: 2                       # Retries on transient API errors
   concurrency: 1                       # Parallel test execution
+  enable_caching: true                 # Prompt caching for prefix/system prompt
 ```
+
+## Conversation Prefix
+
+Prepend a simulated conversation to test whether a skill still steers behavior after context dilution. The prefix appears between the skill prompt and test input in every run (including baseline).
+
+Inline messages:
+
+```yaml
+conversation_prefix:
+  messages:
+    - role: user
+      content: "Can you help me refactor this function?"
+    - role: assistant
+      content: "Sure! Could you share the function?"
+    - role: user
+      content: "Here it is: def foo(): pass"
+    - role: assistant
+      content: "Here's the refactored version: ..."
+```
+
+Or reference an external YAML file:
+
+```yaml
+conversation_prefix:
+  file: "./prefix-conversation.yaml"   # Relative to the .eval.yaml
+```
+
+Rules:
+- Specify either `messages` or `file`, not both
+- Messages must end with an `assistant` message
+- When `enable_caching: true` (default), the last prefix message gets a cache breakpoint so the prefix is shared across all tests in each skill/baseline group
 
 ## Tools Declaration
 
@@ -114,3 +146,14 @@ Use this to simulate prior tool interactions without running a full multi-turn l
       - type: tool_sequence
         tools: [Read, Write]
 ```
+
+## Message Ordering
+
+Messages are assembled in this order for each API call:
+
+1. **Skill message** (user) — injected from the SKILL.md
+2. **Prefix messages** (user/assistant pairs) — from `conversation_prefix`
+3. **Context messages** (user/assistant/tool_result) — from suite-level or test-level `context`
+4. **Test input messages** (user) — from `test.input.messages`
+
+Consecutive same-role messages are automatically coalesced to maintain valid role alternation.
