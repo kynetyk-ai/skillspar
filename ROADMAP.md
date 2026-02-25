@@ -121,21 +121,23 @@ No YAML input changes — this is all about what comes *out* of a run.
 **Milestone**: JSON and JUnit reports include cost, duration, and cache hit rates; exit codes
 are CI-friendly. ✅
 
-## Phase 4D: Stored Baselines & Temporal Diffing
+## Phase 4D: Stored Baselines & Temporal Diffing ✅
 
 Snapshot results over time and detect steer erosion — when a skill's behavioral delta
 shrinks across runs.
 
-- [ ] Snapshot reader/deserializer (`src/skill_evaluator/reporting/snapshot.py`)
-- [ ] Diff engine (`src/skill_evaluator/reporting/diff.py`): per-test pass_rate_delta,
+- [x] Snapshot I/O (`src/skill_evaluator/reporting/snapshot.py`): save, load, list, find_latest
+- [x] Diff engine (`src/skill_evaluator/reporting/diff.py`): per-test pass_rate_delta,
       assertion flips, steer erosion detection (baseline pass rate rising → skill becoming redundant)
-- [ ] Snapshot CLI: `skillspar snapshot save`, `skillspar snapshot diff`
-- [ ] `.skillspar/snapshots/` storage directory (git-friendly, per-project, optional
-      `--snapshot-dir` override)
-- [ ] Console delta display: show what flipped when comparing against a previous snapshot
+- [x] Console delta display (`src/skill_evaluator/reporting/diff_display.py`): Rich-formatted
+      diff output with color-coded regressions, improvements, and steer erosion
+- [x] Snapshot CLI: `skillspar snapshot save`, `skillspar snapshot diff`, `skillspar snapshot list`
+- [x] `.skillspar/snapshots/` storage directory (git-friendly, per-project, optional
+      `--snapshot-dir` override, `SKILLSPAR_SNAPSHOT_DIR` env var)
+- [x] `--latest` mode: run suite, diff against most recent saved snapshot, save new snapshot
 
 **Milestone**: `skillspar snapshot diff` shows per-test pass-rate deltas and flags steer
-erosion between runs.
+erosion between runs. ✅
 
 ## Phase 4E: Watch Mode
 

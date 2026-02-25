@@ -198,3 +198,197 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
 
     if not suite_result.all_passed:
         sys.exit(1)
+
+
+def _run_suite_and_build_report(eval_file, model_override=None):
+    """Load, execute, and build a JSON report for a suite. Returns (suite, report, suite_result)."""
+    from dotenv import load_dotenv
+
+    from skill_evaluator.reporting.cost import build_cost_summary, estimate_cache_savings
+    from skill_evaluator.reporting.json_report import JsonReporter
+
+    load_dotenv()
+
+    try:
+        suite = load_eval_suite(eval_file)
+    except ConfigLoadError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
+
+    config = resolve_config(suite.defaults, cli_model=model_override)
+
+    try:
+        suite_result = execute_suite(Path(eval_file), suite, config)
+    except (SkillParseError, PrefixLoadError) as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
+
+    cost_summary = build_cost_summary(suite_result, config.model)
+
+    # Build cache summary
+    cache_summary = None
+    total_cache_creation = 0
+    total_cache_read = 0
+    has_cache = False
+    for group in suite_result.test_results:
+        all_runs = list(group.runs) + (group.baseline_runs or [])
+        for r in all_runs:
+            if r.trace:
+                u = r.trace.total_usage
+                if u.cache_creation_input_tokens is not None:
+                    total_cache_creation += u.cache_creation_input_tokens
+                    has_cache = True
+                if u.cache_read_input_tokens is not None:
+                    total_cache_read += u.cache_read_input_tokens
+                    has_cache = True
+    if has_cache:
+        savings = estimate_cache_savings(total_cache_read, config.model)
+        cache_summary = {
+            "cache_creation_input_tokens": total_cache_creation,
+            "cache_read_input_tokens": total_cache_read,
+            "estimated_savings_usd": round(savings, 6) if savings is not None else None,
+        }
+
+    reporter = ConsoleReporter(verbose=False)
+    reporter.report(suite_result, cost_summary=cost_summary, cache_summary=cache_summary)
+
+    json_reporter = JsonReporter()
+    report = json_reporter.build_report(suite, suite_result, model=config.model)
+    if cost_summary:
+        report["summary"]["cost"] = cost_summary
+    if cache_summary:
+        report["summary"]["cache_summary"] = cache_summary
+
+    return suite, report, suite_result
+
+
+# --- Snapshot subcommand group ---
+
+
+@main.group()
+def snapshot():
+    """Manage saved snapshots and diffs."""
+
+
+@snapshot.command("save")
+@click.argument("eval_file", type=click.Path(exists=True))
+@click.option(
+    "--snapshot-dir", type=click.Path(), default=None,
+    help="Override snapshot directory (default: .skillspar/snapshots/).",
+)
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
+    default=None,
+    help="Set logging verbosity (default: WARNING).",
+)
+def snapshot_save(eval_file, snapshot_dir, log_level):
+    """Run a suite and save the result as a snapshot."""
+    from skill_evaluator.reporting.snapshot import save_snapshot
+
+    _setup_logging(log_level)
+    snapshot_path = Path(snapshot_dir) if snapshot_dir else None
+
+    _suite, report, _result = _run_suite_and_build_report(eval_file)
+    path = save_snapshot(report, snapshot_dir=snapshot_path)
+    click.echo(f"Snapshot saved to {path}")
+
+
+@snapshot.command("list")
+@click.option("--suite", "suite_name", type=str, default=None, help="Filter by suite name.")
+@click.option(
+    "--snapshot-dir", type=click.Path(), default=None,
+    help="Override snapshot directory (default: .skillspar/snapshots/).",
+)
+def snapshot_list(suite_name, snapshot_dir):
+    """List saved snapshots."""
+    from skill_evaluator.reporting.snapshot import list_snapshots
+
+    snapshot_path = Path(snapshot_dir) if snapshot_dir else None
+    snaps = list_snapshots(suite_name=suite_name, snapshot_dir=snapshot_path)
+
+    if not snaps:
+        click.echo("No snapshots found.")
+        return
+
+    for s in snaps:
+        run_id_str = f"  run_id={s.run_id}" if s.run_id else ""
+        click.echo(f"  {s.timestamp}  {s.suite_name}{run_id_str}  {s.path}")
+
+
+@snapshot.command("diff")
+@click.argument("before", type=click.Path(exists=True), required=False)
+@click.argument("after", type=click.Path(exists=True), required=False)
+@click.option(
+    "--latest", "eval_file", type=click.Path(exists=True), default=None,
+    help="Run a suite and diff against the most recent saved snapshot.",
+)
+@click.option(
+    "--snapshot-dir", type=click.Path(), default=None,
+    help="Override snapshot directory (default: .skillspar/snapshots/).",
+)
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
+    default=None,
+    help="Set logging verbosity (default: WARNING).",
+)
+def snapshot_diff(before, after, eval_file, snapshot_dir, log_level):
+    """Diff two snapshots, or diff latest snapshot against a new run.
+
+    Usage:
+
+      skillspar snapshot diff <before.json> <after.json>
+
+      skillspar snapshot diff --latest <eval_file>
+    """
+    from skill_evaluator.reporting.diff import diff_snapshots
+    from skill_evaluator.reporting.diff_display import display_diff
+    from skill_evaluator.reporting.snapshot import (
+        SnapshotLoadError,
+        find_latest_snapshot,
+        load_snapshot,
+        save_snapshot,
+    )
+
+    _setup_logging(log_level)
+    snapshot_path = Path(snapshot_dir) if snapshot_dir else None
+
+    if eval_file:
+        # --latest mode: run suite, diff against most recent snapshot
+        suite, report, _result = _run_suite_and_build_report(eval_file)
+        previous = find_latest_snapshot(suite.suite, snapshot_dir=snapshot_path)
+
+        # Save the new run as a snapshot
+        saved = save_snapshot(report, snapshot_dir=snapshot_path)
+        click.echo(f"Snapshot saved to {saved}")
+
+        if previous is None:
+            click.echo("No previous snapshot to compare — saved as first snapshot.")
+            return
+
+        try:
+            before_data = load_snapshot(previous)
+        except SnapshotLoadError as e:
+            click.echo(f"Error loading previous snapshot: {e}", err=True)
+            sys.exit(2)
+
+        result = diff_snapshots(before_data, report)
+        display_diff(result)
+    elif before and after:
+        # Explicit two-file diff
+        try:
+            before_data = load_snapshot(Path(before))
+            after_data = load_snapshot(Path(after))
+        except SnapshotLoadError as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(2)
+
+        result = diff_snapshots(before_data, after_data)
+        display_diff(result)
+    else:
+        click.echo(
+            "Error: provide two snapshot files, or use --latest <eval_file>.",
+            err=True,
+        )
+        sys.exit(2)
