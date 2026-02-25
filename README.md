@@ -6,16 +6,16 @@ Define test scenarios in YAML, run them against the API, and measure whether you
 
 Agent Skills promise to turn general-purpose, conversational, tool-using agents into specialists for a specific task or workflow — without fine-tuning, custom code, or the bespoke systems of hooks and prompt engineering that differentiate one such agent from another. Moreover, a well-designed skill may be sufficient to make a smaller model behave like a frontier model for a specific task — potentially significant cost savings if the steer can be confirmed. Most importantly, Agent Skills can be written without coding skills, making them arguably the most accessible path to rapid agent specialization.
 
-Despite this potential, best practices for skill creation are defined largely by gestalt and intuition. Testing is manual if performed at all: invoke the skill, eyeball the output, repeat. To our knowledge, there are few or no quantitative tools for measuring impact of skills on desired behaviors — even on a relative basis. This makes it difficult for enterprises and users to trust skills in production by answering the fundamental questions:
+Despite this potential, best practices for skill creation are defined largely by gestalt and intuition. Testing is manual if performed at all: invoke the skill, eyeball the output, repeat. To our knowledge, there are few and perhaps no quantitative tools for measuring impact of skills on desired agent behaviors — even on a relative basis. This makes it difficult for enterprises and individual users to trust skills in production because fundamental questions are unanswered:
 
 - **Does this skill reliably steer behavior?** Does the model follow the skill's instructions, or would it do the same thing without them?
-- **Is this skill worth the context?** If the model already behaves correctly without the skill, it's dead weight in the system prompt.
+- **Is this skill worth the context?** If the model already behaves correctly without the skill, it's dead weight in the conversation.
 - **Can this skill close the gap between models?** Could a cheaper model with the right skill match a frontier model's behavior on this task?
 - **Did a change break anything?** After editing a skill or after an LLM model update, there's no regression test — just hope.
 
 ## The Solution
 
-Skillspar works on a basic premise: modern conversational, tool-using agents inject Agent Skills into variable system prompt frameworks that can't be fully observed or replicated. Nonetheless, the relative steer a skill provides can be isolated and measured by injecting its SKILL.md as part of a system prompt in simulated conversations, by modeling context file discovery via synthetic tool-call messages, and then asserting on the resulting behavior.
+Skillspar works on a basic premise: modern conversational, tool-using agents inject Agent Skills as user-role messages in conversation — not as system prompts. Skillspar replicates this by injecting the skill's SKILL.md as a user message in simulated conversations, modeling context file discovery via synthetic tool-call messages, and then asserting on the resulting behavior.
 
 If the skill can't steer in isolation, it won't steer inside the full agent either.
 
@@ -28,7 +28,7 @@ The CLI currently executes these suites against the Anthropic API directly and r
 
 ### Baseline Comparison: Prove Your Skill Matters
 
-The `baseline: true` flag runs every test twice — once with your skill as the system prompt, once without. This gives you a concrete, quantitative answer: if the baseline passes at the same rate as the skill, your skill isn't adding value. If the skill passes 5/5 and baseline passes 1/5, you've proven the skill is doing real work.
+The `baseline: true` flag runs every test twice — once with your skill injected as a user message, once without. This gives you a concrete, quantitative answer: if the baseline passes at the same rate as the skill, your skill isn't adding value. If the skill passes 5/5 and baseline passes 1/5, you've proven the skill is doing real work.
 
 ```yaml
 tests:
@@ -99,7 +99,7 @@ tests:
 
 ### Architecture
 
-The skill's SKILL.md becomes the `system` prompt. Mock tools are standard Anthropic tool definitions. Conversation history is the `messages` array. The API response is inspected against your assertions.
+The skill's SKILL.md is injected as a user message at the start of the conversation — matching how real skill loaders (Claude Code, Cursor, Windsurf) deliver skills. An optional `system_prompt` in suite defaults provides a constant baseline persona for both skill and baseline runs. Mock tools are standard Anthropic tool definitions. The API response is inspected against your assertions.
 
 ```
 YAML Config → Skill Parser → Test Executor → Assertion Engine → Reporter

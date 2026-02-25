@@ -9,6 +9,15 @@ class ConversationBuildError(Exception):
     """Raised when messages cannot be converted to API format."""
 
 
+def build_skill_messages(skill_body: str) -> list[MessageConfig]:
+    """Build a user message containing the skill body with contextual framing."""
+    framed = (
+        "The following skill has been activated for this task:\n\n"
+        f"{skill_body}"
+    )
+    return [MessageConfig(role="user", content=framed)]
+
+
 def build_messages(messages: list[MessageConfig]) -> list[dict]:
     """Convert YAML message configs to Anthropic API message format.
 

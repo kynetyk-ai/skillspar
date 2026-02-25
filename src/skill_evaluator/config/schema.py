@@ -235,6 +235,7 @@ TestConfig = Annotated[
 # ---------------------------------------------------------------------------
 
 class SuiteDefaults(BaseModel):
+    system_prompt: str = ""  # Baseline agent persona, constant across skill/baseline runs
     model: str = "claude-sonnet-4-5-20250929"
     judge_model: str = ""
     max_tokens: int = 4096
@@ -290,6 +291,7 @@ class EvalSuite(BaseModel):
 class ResolvedConfig(BaseModel, frozen=True):
     """Frozen config produced by merging defaults → env vars → YAML → CLI flags."""
 
+    system_prompt: str = ""
     model: str = "claude-sonnet-4-5-20250929"
     judge_model: str = ""
     max_tokens: int = 4096

@@ -21,6 +21,7 @@ from skill_evaluator.config.schema import (
     SingleTurnTest,
 )
 from skill_evaluator.engine.context import ContextFileError, build_context_messages
+from skill_evaluator.engine.conversation import build_skill_messages
 from skill_evaluator.engine.multi_turn import MultiTurnExecutor
 from skill_evaluator.engine.single_turn import SingleTurnExecutor
 from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
@@ -36,7 +37,7 @@ class _WorkItem:
     test: SingleTurnTest | MultiTurnTest
     run_index: int
     is_baseline: bool
-    system_prompt: str
+    skill_body: str
 
 
 class SuiteRunner:
@@ -69,7 +70,7 @@ class SuiteRunner:
         logger.info("Starting suite '%s' (%d tests)", self.suite.suite, len(self.suite.tests))
         skill_path = resolve_skill_path(self.eval_file, self.suite.skill)
         skill = parse_skill(skill_path)
-        system_prompt = skill.body
+        skill_body = skill.body
 
         suite_tools = resolve_tools(self.suite.tools)
 
@@ -79,11 +80,11 @@ class SuiteRunner:
             runs = self._effective_runs(test)
             for run_i in range(runs):
                 work_items.append(
-                    _WorkItem(idx, test, run_i, is_baseline=False, system_prompt=system_prompt)
+                    _WorkItem(idx, test, run_i, is_baseline=False, skill_body=skill_body)
                 )
                 if test.baseline:
                     work_items.append(
-                        _WorkItem(idx, test, run_i, is_baseline=True, system_prompt="")
+                        _WorkItem(idx, test, run_i, is_baseline=True, skill_body="")
                     )
 
         logger.debug("Built %d work items", len(work_items))
@@ -146,8 +147,8 @@ class SuiteRunner:
             item.test.name, item.run_index, item.is_baseline,
         )
         if isinstance(item.test, MultiTurnTest):
-            return self._run_multi_turn(item.test, item.system_prompt, suite_tools)
-        return self._run_single_turn(item.test, item.system_prompt, suite_tools)
+            return self._run_multi_turn(item.test, item.skill_body, suite_tools)
+        return self._run_single_turn(item.test, item.skill_body, suite_tools)
 
     def _resolve_context_for(
         self, test: SingleTurnTest | MultiTurnTest
@@ -161,7 +162,7 @@ class SuiteRunner:
     def _run_single_turn(
         self,
         test: SingleTurnTest,
-        system_prompt: str,
+        skill_body: str,
         suite_tools: list[dict[str, Any]],
     ) -> TestResult:
         """Execute a single-turn test and evaluate its assertions."""
@@ -181,11 +182,11 @@ class SuiteRunner:
                 ],
             )
 
-        input_config = test.input
-        if context_messages:
-            merged_messages = context_messages + list(test.input.messages)
-            input_config = InputConfig(messages=merged_messages)
+        skill_messages = build_skill_messages(skill_body) if skill_body else []
+        merged_messages = skill_messages + context_messages + list(test.input.messages)
+        input_config = InputConfig(messages=merged_messages)
 
+        system_prompt = self.suite.defaults.system_prompt
         executor = SingleTurnExecutor(self.client, self.suite.defaults)
         try:
             trace = executor.execute(
@@ -215,7 +216,7 @@ class SuiteRunner:
     def _run_multi_turn(
         self,
         test: MultiTurnTest,
-        system_prompt: str,
+        skill_body: str,
         suite_tools: list[dict[str, Any]],
     ) -> TestResult:
         """Execute a multi-turn test and evaluate its assertions."""
@@ -235,11 +236,11 @@ class SuiteRunner:
                 ],
             )
 
-        input_config = test.input
-        if context_messages:
-            merged_messages = context_messages + list(test.input.messages)
-            input_config = InputConfig(messages=merged_messages)
+        skill_messages = build_skill_messages(skill_body) if skill_body else []
+        merged_messages = skill_messages + context_messages + list(test.input.messages)
+        input_config = InputConfig(messages=merged_messages)
 
+        system_prompt = self.suite.defaults.system_prompt
         executor = MultiTurnExecutor(
             client=self.client,
             defaults=self.suite.defaults,

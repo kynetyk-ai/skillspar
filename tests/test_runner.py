@@ -579,7 +579,7 @@ tests:
         # 2 skill + 2 baseline = 4 calls
         assert mock_anthropic_client.messages.create.call_count == 4
 
-    def test_baseline_uses_empty_system_prompt(
+    def test_baseline_omits_skill_message(
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
@@ -608,10 +608,17 @@ tests:
         # 2 calls: 1 skill + 1 baseline
         calls = mock_anthropic_client.messages.create.call_args_list
         assert len(calls) == 2
-        # One call should have the skill prompt, one should have empty string
-        system_prompts = [c.kwargs["system"] for c in calls]
-        assert "" in system_prompts
-        assert any(p != "" for p in system_prompts)
+        # Both calls should have empty system prompt (baseline persona)
+        for call in calls:
+            assert call.kwargs["system"] == ""
+        # Skill run should have the framed skill body in messages
+        skill_call_messages = calls[0].kwargs["messages"]
+        skill_text = str(skill_call_messages)
+        assert "The following skill has been activated" in skill_text
+        # Baseline run should NOT have the skill message
+        baseline_call_messages = calls[1].kwargs["messages"]
+        baseline_text = str(baseline_call_messages)
+        assert "The following skill has been activated" not in baseline_text
 
     def test_per_test_runs_override(
         self, tmp_path, mock_anthropic_client, mock_anthropic_message

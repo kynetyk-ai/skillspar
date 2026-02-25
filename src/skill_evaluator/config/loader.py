@@ -65,6 +65,7 @@ def resolve_config(
         output = os.environ.get("SKILLSPAR_OUTPUT")
 
     config = ResolvedConfig(
+        system_prompt=suite_defaults.system_prompt,
         model=cli_model or suite_defaults.model,
         judge_model=suite_defaults.judge_model,
         max_tokens=suite_defaults.max_tokens,

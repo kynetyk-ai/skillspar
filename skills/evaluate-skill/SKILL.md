@@ -215,6 +215,8 @@ baseline: false  # base model never produces this tool sequence unprompted
 
 For single-turn tests that need tool-use context (e.g., "after reading a file, the review should..."), use **conversation history** in the `messages` array to simulate prior tool interactions rather than running a full multi-turn loop.
 
+**Progressive discovery as tool results**: In real agent workflows, reference material (code, docs, configs) arrives through tool calls — the model calls `Read()`, `Glob()`, or `Grep()` and receives file contents as tool results. Model this in tests by providing reference material as `tool_result` messages in conversation history, not as flat user-message context. This matters because the model's behavior changes depending on *how* it received the information — content discovered via tool calls is weighted differently than content handed to it in a user message.
+
 ## F: Test Generation Conventions
 
 1. **Descriptive verb-first names**: `"produces structured output with severity labels"`, not `"test_1"` or `"output format"`
