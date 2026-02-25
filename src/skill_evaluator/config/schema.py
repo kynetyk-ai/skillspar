@@ -9,6 +9,7 @@ from typing import Annotated, Any, Literal, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 DEFAULT_MODEL = os.environ.get("SKILLSPAR_MODEL", "claude-sonnet-4-5-20250929")
+DEFAULT_JUDGE_MODEL = os.environ.get("SKILLSPAR_JUDGE_MODEL", "")
 
 
 # ---------------------------------------------------------------------------
@@ -239,6 +240,7 @@ TestConfig = Annotated[
 
 class SuiteDefaults(BaseModel):
     model: str = DEFAULT_MODEL
+    judge_model: str = DEFAULT_JUDGE_MODEL
     max_tokens: int = 4096
     temperature: float = 0
     runs: int = 1

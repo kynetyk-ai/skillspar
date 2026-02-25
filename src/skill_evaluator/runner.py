@@ -189,7 +189,8 @@ class SuiteRunner:
 
         assertion_results = evaluate_assertions(
             test.assertions, trace,
-            client=self.client, judge_model=self.suite.defaults.model,
+            client=self.client,
+            judge_model=self.suite.defaults.judge_model or self.suite.defaults.model,
         )
         return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)
 
@@ -247,6 +248,7 @@ class SuiteRunner:
 
         assertion_results = evaluate_assertions(
             test.assertions, trace,
-            client=self.client, judge_model=self.suite.defaults.model,
+            client=self.client,
+            judge_model=self.suite.defaults.judge_model or self.suite.defaults.model,
         )
         return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)
