@@ -767,3 +767,34 @@ tests:
         tr = result.test_results[0].runs[0]
         assert tr.trace is not None
         assert tr.trace.text_output == "Hello!"
+
+    def test_llm_judge_integration(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """LLM judge assertions are evaluated via the runner."""
+        # First call: main test response; second call: judge response
+        test_msg = mock_anthropic_message(text="Hello! How can I help?")
+        judge_msg = mock_anthropic_message(text="PASS\nThe response is friendly.")
+        mock_anthropic_client.messages.create.side_effect = [test_msg, judge_msg]
+
+        yaml = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: single_turn
+    name: "judge test"
+    input:
+      messages:
+        - role: user
+          content: "Hi"
+    assertions:
+      - type: llm_judge
+        criteria: "Is the response friendly?"
+"""
+        eval_file = self._make_suite_files(tmp_path, yaml)
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        result = runner.run()
+
+        assert result.all_passed is True
+        assert mock_anthropic_client.messages.create.call_count == 2

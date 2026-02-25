@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
 from skill_evaluator.assertions.deterministic import (
     check_output_contains,
@@ -19,6 +21,7 @@ from skill_evaluator.assertions.structural import (
 )
 from skill_evaluator.config.schema import (
     AssertionConfig,
+    LLMJudgeAssertion,
     OutputContainsAssertion,
     OutputMatchesRegexAssertion,
     OutputNotContainsAssertion,
@@ -31,6 +34,9 @@ from skill_evaluator.config.schema import (
     TurnCountAssertion,
 )
 from skill_evaluator.engine.trace import Trace
+
+if TYPE_CHECKING:
+    from anthropic import Anthropic
 
 _HANDLERS: dict = {
     StopReasonAssertion: check_stop_reason,
@@ -49,6 +55,9 @@ _HANDLERS: dict = {
 def evaluate_assertions(
     assertions: list[AssertionConfig],
     trace: Trace,
+    *,
+    client: Anthropic | None = None,
+    judge_model: str | None = None,
 ) -> list[AssertionResult]:
     """Evaluate a list of assertions against a trace.
 
@@ -57,6 +66,30 @@ def evaluate_assertions(
     """
     results: list[AssertionResult] = []
     for assertion in assertions:
+        # LLM judge requires special handling (needs API client)
+        if isinstance(assertion, LLMJudgeAssertion):
+            if client is not None:
+                from skill_evaluator.assertions.llm_judge import check_llm_judge
+
+                try:
+                    result = check_llm_judge(
+                        assertion, trace, client=client, judge_model=judge_model
+                    )
+                    results.append(result)
+                except Exception as e:
+                    results.append(AssertionResult(
+                        status=AssertionStatus.ERROR,
+                        assertion_type=assertion.type,
+                        message=f"Error evaluating assertion: {e}",
+                    ))
+            else:
+                results.append(AssertionResult(
+                    status=AssertionStatus.SKIPPED,
+                    assertion_type=assertion.type,
+                    message="LLM judge requires an API client",
+                ))
+            continue
+
         handler = _HANDLERS.get(type(assertion))
         if handler is None:
             results.append(AssertionResult(

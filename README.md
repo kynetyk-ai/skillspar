@@ -1,23 +1,21 @@
 # Skillspar: Quantitative Testing Harness for Agent Skills
 
-Define test scenarios in YAML, run them against the API, and measure whether your skill actually changes model behavior — or whether it's just context bloat. Skillspar includes baseline comparison to quantify the steer your skill provides, repeated runs for statistical confidence, and multi-turn tool mocking for agentic workflows. Currently tests against the [Anthropic API](https://docs.anthropic.com/en/docs/api-reference), extensible to other providers.
+Define test scenarios in YAML, run them against the API, and measure whether your skill actually changes model behavior — or whether it's just context bloat. Skillspar includes baseline comparison to quantify the "steer" your skill provides, repeated runs for statistical confidence, and multi-turn tool mocking for agentic workflows. Currently tests against the [Anthropic API](https://docs.anthropic.com/en/docs/api-reference), extensible to other providers.
 
 ## Background
 
-Agent Skills promise to turn a general-purpose, conversational, tool-using agent into a specialist for a specific task or workflow — without fine-tuning, custom code, or the bespoke systems of hooks and prompt engineering that differentiate one coding agent from another. Skills can be written without coding skills, making them arguably the most accessible path to rapid agent specialization.
+Agent Skills promise to turn general-purpose, conversational, tool-using agents into specialists for a specific task or workflow — without fine-tuning, custom code, or the bespoke systems of hooks and prompt engineering that differentiate one such agent from another. Moreover, a well-designed skill may be sufficient to make a smaller model behave like a frontier model for a specific task — potentially significant cost savings if the steer can be confirmed. Most importantly, Agent Skills can be written without coding skills, making them arguably the most accessible path to rapid agent specialization.
 
-Despite this potential, best practices for skill creation are defined largely by gestalt and intuition. Testing is manual if performed at all: invoke the skill, eyeball the output, repeat. There are no quantitative tools for measuring whether a skill actually steers behavior — even on a relative basis. This makes it difficult for enterprises and users to trust skills in production or feel confident they provide more than context bloat.
-
-The stakes are real. A well-designed skill may be sufficient to make a smaller model behave like a frontier model for a specific task — a significant cost savings if the steer can be confirmed. But without measurement, there's no way to answer the fundamental questions:
+Despite this potential, best practices for skill creation are defined largely by gestalt and intuition. Testing is manual if performed at all: invoke the skill, eyeball the output, repeat. To our knowledge, there are few or no quantitative tools for measuring impact of skills on desired behaviors — even on a relative basis. This makes it difficult for enterprises and users to trust skills in production by answering the fundamental questions:
 
 - **Does this skill reliably steer behavior?** Does the model follow the skill's instructions, or would it do the same thing without them?
 - **Is this skill worth the context?** If the model already behaves correctly without the skill, it's dead weight in the system prompt.
 - **Can this skill close the gap between models?** Could a cheaper model with the right skill match a frontier model's behavior on this task?
-- **Did my change break anything?** After editing a skill, there's no regression test — just hope.
+- **Did a change break anything?** After editing a skill or after an LLM model update, there's no regression test — just hope.
 
 ## The Solution
 
-Skillspar works on a basic premise: modern coding agents inject Agent Skills into a variable system prompt framework that we can't fully observe or replicate. But we can isolate the steer a skill provides by injecting its SKILL.md as part of a system prompt in simulated conversations, modeling context file discovery via synthetic tool-call messages, and asserting on the resulting behavior.
+Skillspar works on a basic premise: modern conversational, tool-using agents inject Agent Skills into variable system prompt frameworks that can't be fully observed or replicated. Nonetheless, the relative steer a skill provides can be isolated and measured by injecting its SKILL.md as part of a system prompt in simulated conversations, by modeling context file discovery via synthetic tool-call messages, and then asserting on the resulting behavior.
 
 If the skill can't steer in isolation, it won't steer inside the full agent either.
 

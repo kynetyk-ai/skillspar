@@ -187,7 +187,10 @@ class SuiteRunner:
                 ],
             )
 
-        assertion_results = evaluate_assertions(test.assertions, trace)
+        assertion_results = evaluate_assertions(
+            test.assertions, trace,
+            client=self.client, judge_model=self.suite.defaults.model,
+        )
         return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)
 
     def _run_multi_turn(
@@ -242,5 +245,8 @@ class SuiteRunner:
                 ],
             )
 
-        assertion_results = evaluate_assertions(test.assertions, trace)
+        assertion_results = evaluate_assertions(
+            test.assertions, trace,
+            client=self.client, judge_model=self.suite.defaults.model,
+        )
         return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)

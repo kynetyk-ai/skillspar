@@ -21,6 +21,7 @@ class TestEvaluateAssertions:
         assert all(r.status == AssertionStatus.PASSED for r in results)
 
     def test_skips_unimplemented_types(self, simple_text_trace):
+        """LLM judge without client is SKIPPED."""
         assertions = [
             LLMJudgeAssertion(type="llm_judge", criteria="Is the response friendly?"),
         ]
@@ -28,12 +29,48 @@ class TestEvaluateAssertions:
         assert len(results) == 1
         assert results[0].status == AssertionStatus.SKIPPED
 
-    def test_llm_judge_skipped(self, simple_text_trace):
+    def test_llm_judge_skipped_without_client(self, simple_text_trace):
         assertions = [
             LLMJudgeAssertion(type="llm_judge", criteria="Is the response friendly?"),
         ]
-        results = evaluate_assertions(assertions, simple_text_trace)
+        results = evaluate_assertions(assertions, simple_text_trace, client=None)
         assert results[0].status == AssertionStatus.SKIPPED
+
+    def test_llm_judge_dispatches(
+        self, simple_text_trace, mock_anthropic_client, mock_anthropic_message
+    ):
+        """LLM judge with client dispatches and returns PASSED."""
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
+            text="PASS\nGreat response."
+        )
+
+        assertions = [
+            LLMJudgeAssertion(type="llm_judge", criteria="Is it friendly?"),
+        ]
+        results = evaluate_assertions(
+            assertions, simple_text_trace,
+            client=mock_anthropic_client, judge_model="claude-haiku-3",
+        )
+        assert len(results) == 1
+        assert results[0].status == AssertionStatus.PASSED
+
+    def test_llm_judge_fails(
+        self, simple_text_trace, mock_anthropic_client, mock_anthropic_message
+    ):
+        """LLM judge returns FAILED when judge says FAIL."""
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
+            text="FAIL\nNot detailed enough."
+        )
+
+        assertions = [
+            LLMJudgeAssertion(type="llm_judge", criteria="Is it detailed?"),
+        ]
+        results = evaluate_assertions(
+            assertions, simple_text_trace,
+            client=mock_anthropic_client, judge_model="claude-haiku-3",
+        )
+        assert len(results) == 1
+        assert results[0].status == AssertionStatus.FAILED
 
     def test_mixed_results(self, simple_text_trace):
         assertions = [

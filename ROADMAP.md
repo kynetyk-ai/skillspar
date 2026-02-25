@@ -40,19 +40,20 @@ Agentic loop execution with scripted tool responses.
 
 **Milestone**: Multi-turn eval suites with scripted tool responses execute correctly. ✅
 
-## Phase 3: LLM Judge + CI Integration
+## Phase 3: LLM Judge + CI Integration ✅
 
 Quality assertions and CI-friendly output formats.
 
-- [ ] `llm_judge` assertion type (separate API call with criteria + threshold)
+- [x] `llm_judge` assertion type (separate API call with criteria + verdict parsing)
 - [x] JSON structured report output — *done in Phase 1*
-- [ ] JUnit XML report output
+- [x] JUnit XML report output
 - [x] Token counting and cost estimation in reports — *done in Phase 1 (JSON report includes total_tokens)*
-- [x] CLI flags: `--output` — *done in Phase 1*
-- [ ] CLI flags: `--format`, `--filter`, `--model`, `--verbose`
+- [x] CLI flags: `--output` — *done in Phase 1, fixed path handling in Phase 3*
+- [x] CLI flags: `--format`, `--filter`, `--model`, `--verbose`
 - [x] Parallel test execution (ThreadPoolExecutor) — *done in Phase 1*
+- [x] Verbose console output (per-assertion details, per-run breakdown)
 
-**Milestone**: `skill-eval run suite.yaml --format junit --output results.xml` works in CI.
+**Milestone**: `skillspar run suite.yaml --format junit --output results.xml` works in CI. ✅
 
 ## Phase 4: Automated Skill Analysis — `/evaluate-skill`
 
@@ -66,13 +67,16 @@ A SKILL.md that guides Claude Code through analyzing a target skill and generati
 - [ ] PyPI packaging and distribution
 - [ ] Example suites for real-world skills that demonstrate measurable steer
 - [ ] Documentation
+- [ ] Re-evaluate README prior to final release
 
 **Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior.
 
-## Phase 5: Advanced (Future)
+## Phase 5: Analytics + Advanced (Future)
 
+- [ ] Sample size estimator — recommend run counts for statistically significant steer measurement
+- [ ] Analytics package — standardized reporting for skill vs. baseline comparison, cross-model steer analysis, and confidence intervals
+- [ ] Steer strength metric — quantify the delta between skill and baseline pass rates
 - [ ] Snapshot testing (golden trace diffing for tool call sequences)
 - [x] Flakiness detection (run N times, report variance) — *done in Phase 1 (repeated runs + pass_threshold)*
 - [ ] A/B model comparison (same skill across model versions — does the steer hold?)
 - [ ] Response caching for faster re-runs
-- [ ] Steer strength metric — quantify the delta between skill and baseline pass rates

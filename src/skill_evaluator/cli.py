@@ -24,6 +24,26 @@ def _slugify(name: str) -> str:
     return slug.strip("-")
 
 
+def _resolve_output_path(output: str | None, output_format: str, suite_name: str) -> Path | None:
+    """Resolve the output file path from --output flag and format."""
+    if output is None:
+        output = os.environ.get("SKILLSPAR_OUTPUT")
+    if output is None:
+        return None
+
+    path = Path(output).resolve()
+
+    # If --output ends with a known extension, treat it as a file path directly
+    if path.suffix in (".json", ".xml"):
+        return path
+
+    # Otherwise treat as a directory and auto-generate a filename
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    slug = _slugify(suite_name)
+    ext = "xml" if output_format == "junit" else "json"
+    return path / f"{slug}_{timestamp}.{ext}"
+
+
 @click.group()
 @click.version_option(package_name="skillspar")
 def main():
@@ -36,8 +56,24 @@ def main():
 @click.option(
     "--concurrency", type=int, default=None, help="Override suite default for max parallel API calls."
 )
-@click.option("--output", type=click.Path(), default=None, help="Directory for JSON report output.")
-def run(eval_file, runs, concurrency, output):
+@click.option("--output", type=click.Path(), default=None, help="Output path for report file.")
+@click.option(
+    "--format", "output_format", type=click.Choice(["json", "junit"]), default=None,
+    help="Report format (default: inferred from --output extension, or json).",
+)
+@click.option(
+    "--filter", "filter_pattern", type=str, default=None,
+    help="Only run tests whose name contains this substring.",
+)
+@click.option(
+    "--model", type=str, default=None,
+    help="Override the suite default model.",
+)
+@click.option(
+    "--verbose", is_flag=True, default=False,
+    help="Show per-assertion details in console output.",
+)
+def run(eval_file, runs, concurrency, output, output_format, filter_pattern, model, verbose):
     """Run an eval suite from a .eval.yaml file."""
     try:
         suite = load_eval_suite(eval_file)
@@ -49,29 +85,47 @@ def run(eval_file, runs, concurrency, output):
         suite.defaults.runs = runs
     if concurrency is not None:
         suite.defaults.concurrency = concurrency
+    if model is not None:
+        suite.defaults.model = model
+
+    # Filter tests by name substring
+    if filter_pattern is not None:
+        pattern_lower = filter_pattern.lower()
+        suite.tests = [t for t in suite.tests if pattern_lower in t.name.lower()]
+        if not suite.tests:
+            click.echo(f"Error: no tests match filter '{filter_pattern}'", err=True)
+            sys.exit(1)
 
     runner = SuiteRunner(eval_file, suite)
     suite_result = runner.run()
 
-    reporter = ConsoleReporter()
+    reporter = ConsoleReporter(verbose=verbose)
     reporter.report(suite_result)
 
-    output_dir = output or os.environ.get("SKILLSPAR_OUTPUT")
-    if output_dir is not None:
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-        slug = _slugify(suite.suite)
-        filename = f"{slug}_{timestamp}.json"
-        resolved = Path(output_dir).resolve() / filename
-    else:
-        resolved = None
+    # Determine format: explicit flag > extension inference > json default
+    if output_format is None:
+        if output and Path(output).suffix == ".xml":
+            output_format = "junit"
+        else:
+            output_format = "json"
+
+    resolved = _resolve_output_path(output, output_format, suite.suite)
 
     if resolved is not None:
-        from skill_evaluator.reporting.json_report import JsonReporter
+        if output_format == "junit":
+            from skill_evaluator.reporting.junit import JunitReporter
 
-        json_reporter = JsonReporter()
-        report = json_reporter.build_report(suite, suite_result)
-        json_reporter.write(report, resolved)
-        click.echo(f"JSON report written to {resolved}")
+            junit_reporter = JunitReporter()
+            report = junit_reporter.build_report(suite, suite_result)
+            junit_reporter.write(report, resolved)
+            click.echo(f"JUnit report written to {resolved}")
+        else:
+            from skill_evaluator.reporting.json_report import JsonReporter
+
+            json_reporter = JsonReporter()
+            report = json_reporter.build_report(suite, suite_result)
+            json_reporter.write(report, resolved)
+            click.echo(f"JSON report written to {resolved}")
 
     if not suite_result.all_passed:
         sys.exit(1)

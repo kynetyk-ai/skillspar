@@ -136,11 +136,20 @@ class SuiteResult:
         return all(t.passed for t in self.test_results)
 
 
+_STATUS_ICONS = {
+    AssertionStatus.PASSED: "[green]✓[/green]",
+    AssertionStatus.FAILED: "[red]✗[/red]",
+    AssertionStatus.ERROR: "[yellow]![/yellow]",
+    AssertionStatus.SKIPPED: "[dim]–[/dim]",
+}
+
+
 class ConsoleReporter:
     """Renders test results to the terminal using Rich."""
 
-    def __init__(self, console: Console | None = None) -> None:
+    def __init__(self, console: Console | None = None, *, verbose: bool = False) -> None:
         self.console = console or Console()
+        self.verbose = verbose
 
     def report(self, suite_result: SuiteResult) -> None:
         self.console.print()
@@ -178,6 +187,9 @@ class ConsoleReporter:
                 elif result.status == AssertionStatus.ERROR:
                     self.console.print(f"    [yellow]ERROR[/yellow] {result.message}")
 
+        if self.verbose:
+            self._print_assertion_details(test)
+
     def _report_multi_run(self, group: TestRunGroup) -> None:
         total = len(group.runs)
         pc = group.pass_count
@@ -196,4 +208,23 @@ class ConsoleReporter:
             bl_pass = group.baseline_pass_count
             self.console.print(
                 f"    [dim]baseline: {bl_pass}/{bl_total} passed[/dim]"
+            )
+
+        if self.verbose:
+            for i, run in enumerate(group.runs):
+                status = "PASS" if run.passed else "FAIL"
+                color = "green" if run.passed else "red"
+                self.console.print(f"    [{color}]run {i}: {status}[/{color}]")
+                self._print_assertion_details(run, indent=6)
+
+    def _print_assertion_details(self, test: TestResult, indent: int = 4) -> None:
+        """Print all assertion results with status icons."""
+        pad = " " * indent
+        for result in test.assertion_results:
+            icon = _STATUS_ICONS.get(result.status, "?")
+            label = result.status.value.upper()
+            atype = result.assertion_type.replace("[", r"\[")
+            msg = result.message.replace("[", r"\[")
+            self.console.print(
+                f"{pad}{icon} \\[{atype}] {label}: {msg}"
             )
