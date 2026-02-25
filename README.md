@@ -1,21 +1,45 @@
-# Skillspar
+# Skillspar: Quantitative Testing Harness for Agent Skills
 
-Declarative testing harness for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) Agent Skills.
+Define test scenarios in YAML, run them against the API, and measure whether your skill actually changes model behavior — or whether it's just context bloat. Skillspar includes baseline comparison to quantify the steer your skill provides, repeated runs for statistical confidence, and multi-turn tool mocking for agentic workflows. Currently tests against the [Anthropic API](https://docs.anthropic.com/en/docs/api-reference), extensible to other providers.
 
-Define expected behaviors in YAML. Run them against the Anthropic API. Get reproducible pass/fail results.
+## Background
 
-## The Problem
+Agent Skills promise to turn a general-purpose, conversational, tool-using agent into a specialist for a specific task or workflow — without fine-tuning, custom code, or the bespoke systems of hooks and prompt engineering that differentiate one coding agent from another. Skills can be written without coding skills, making them arguably the most accessible path to rapid agent specialization.
 
-When developing Claude Code Agent Skills (SKILL.md packages), testing is manual: invoke the skill, eyeball the output, repeat. There's no systematic way to verify that a skill produces the intended behavior, track regressions, or run checks in CI.
+Despite this potential, best practices for skill creation are defined largely by gestalt and intuition. Testing is manual if performed at all: invoke the skill, eyeball the output, repeat. There are no quantitative tools for measuring whether a skill actually steers behavior — even on a relative basis. This makes it difficult for enterprises and users to trust skills in production or feel confident they provide more than context bloat.
+
+The stakes are real. A well-designed skill may be sufficient to make a smaller model behave like a frontier model for a specific task — a significant cost savings if the steer can be confirmed. But without measurement, there's no way to answer the fundamental questions:
+
+- **Does this skill reliably steer behavior?** Does the model follow the skill's instructions, or would it do the same thing without them?
+- **Is this skill worth the context?** If the model already behaves correctly without the skill, it's dead weight in the system prompt.
+- **Can this skill close the gap between models?** Could a cheaper model with the right skill match a frontier model's behavior on this task?
+- **Did my change break anything?** After editing a skill, there's no regression test — just hope.
 
 ## The Solution
 
-Skillspar lets you write declarative test suites in `.eval.yaml` files that specify:
-- What **messages** to send (conversation scenarios)
-- What **tools** the skill has access to (mock schemas with scripted responses)
-- What **assertions** to check (tool calls, output content, argument patterns, LLM-judged quality)
+Skillspar works on a basic premise: modern coding agents inject Agent Skills into a variable system prompt framework that we can't fully observe or replicate. But we can isolate the steer a skill provides by injecting its SKILL.md as part of a system prompt in simulated conversations, modeling context file discovery via synthetic tool-call messages, and asserting on the resulting behavior.
 
-The CLI executes these suites against the Anthropic API directly — no Claude Code runtime needed — and reports results.
+If the skill can't steer in isolation, it won't steer inside the full agent either.
+
+Based on this premise, Skillspar provides a declarative test harness — `.eval.yaml` files that specify:
+- **messages** that define conversational scenarios where Agent Skills should be invoked 
+- **tools** the skill has access to (mock schemas with scripted responses)
+- **assertions** on behaviors under test (tool calls, output content, argument patterns, sequences)
+
+The CLI currently executes these suites against the Anthropic API directly and reports results. While the current implementation is designed for use with the Anthropic API, there is no fundamental reason the harness could not be extended to test LLMs from other providers that support Agent Skills.
+
+### Baseline Comparison: Prove Your Skill Matters
+
+The `baseline: true` flag runs every test twice — once with your skill as the system prompt, once without. This gives you a concrete, quantitative answer: if the baseline passes at the same rate as the skill, your skill isn't adding value. If the skill passes 5/5 and baseline passes 1/5, you've proven the skill is doing real work.
+
+```yaml
+tests:
+  - name: "always reads before writing"
+    type: multi_turn
+    baseline: true    # also run without the skill prompt
+    runs: 5           # repeat for statistical confidence
+    # ...
+```
 
 ## Quick Start
 
@@ -54,7 +78,7 @@ skillspar run my-skill.eval.yaml
 
 ### Repeated Runs & Reliability
 
-Run each test multiple times to measure consistency:
+Run each test multiple times to measure consistency and compare against baseline:
 
 ```bash
 skillspar run my-skill.eval.yaml --runs 10 --concurrency 4 --output results.json
@@ -69,17 +93,11 @@ defaults:
 tests:
   - name: "critical behavior"
     type: single_turn
-    baseline: true      # also run without skill for comparison
+    baseline: true      # also run without skill — prove the skill adds value
     # ...
 ```
 
 ## How It Works
-
-### Two-Phase Workflow
-
-**Phase A: Test Design** — You and Claude Code collaborate to analyze a skill, identify key behaviors, design mock tools, craft conversation scenarios, and define assertions. Output: a `.eval.yaml` file.
-
-**Phase B: Test Execution** — The CLI runs the suite reproducibly: same config, same API calls, same assertions every time. Captures token counts, costs, latencies, pass/fail rates.
 
 ### Architecture
 
@@ -96,7 +114,7 @@ YAML Config → Skill Parser → Test Executor → Assertion Engine → Reporter
 ### Executor Modes
 
 - **SingleTurnExecutor** — One API call, assert on response. Use for unit-testing individual behaviors.
-- **MultiTurnExecutor** — Agentic loop with scripted mock tool responses until completion or turn limit. Use for integration-testing complex workflows.
+- **MultiTurnExecutor** — Agentic loop with scripted mock tool responses until completion or turn limit. Use for testing that a skill causes the model to call the right tools in the right order.
 
 ## Test Definition Format
 

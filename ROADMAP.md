@@ -1,5 +1,9 @@
 # Roadmap
 
+## Core Thesis
+
+A skill is a system prompt. Skillspar measures the **steer** — the marginal behavioral impact of that prompt. Baseline comparison (`baseline: true`) answers the question generic eval frameworks don't ask: *"Is this skill worth having, or is it context bloat?"* If the model behaves the same with and without the skill, the skill is dead weight. If behavior diverges, the skill is doing real work.
+
 ## Phase 1: Foundation — Single-Turn Tests ✅
 
 Core infrastructure for running single-turn eval suites.
@@ -50,24 +54,25 @@ Quality assertions and CI-friendly output formats.
 
 **Milestone**: `skill-eval run suite.yaml --format junit --output results.xml` works in CI.
 
-## Phase 4: Claude Code Skill — Test Design Assistant
+## Phase 4: Automated Skill Analysis — `/evaluate-skill`
 
-A SKILL.md that guides Claude Code through test design.
+A SKILL.md that guides Claude Code through analyzing a target skill and generating a test suite. This is the key differentiator — no other tool can read a skill definition and automatically propose what to test, with baseline enabled by default so every generated suite answers "is this skill worth the context?"
 
 - [ ] `/evaluate-skill` skill that analyzes a target SKILL.md
-- [ ] Automated test scenario proposal
+- [ ] Skill structure analysis: extract behavioral claims, tool-use patterns, examples, constraints
+- [ ] Automated test scenario generation with baseline enabled by default
 - [ ] `.eval.yaml` generation from skill analysis
 - [ ] CLI result interpretation and feedback loop
 - [ ] PyPI packaging and distribution
-- [ ] Example suites for real-world skills
+- [ ] Example suites for real-world skills that demonstrate measurable steer
 - [ ] Documentation
 
-**Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite.
+**Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior.
 
 ## Phase 5: Advanced (Future)
 
-- [ ] Snapshot testing (golden trace diffing)
+- [ ] Snapshot testing (golden trace diffing for tool call sequences)
 - [x] Flakiness detection (run N times, report variance) — *done in Phase 1 (repeated runs + pass_threshold)*
-- [ ] A/B model comparison
-- [ ] Auto-generate test suites from SKILL.md using LLM
+- [ ] A/B model comparison (same skill across model versions — does the steer hold?)
 - [ ] Response caching for faster re-runs
+- [ ] Steer strength metric — quantify the delta between skill and baseline pass rates
