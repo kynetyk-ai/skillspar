@@ -55,24 +55,40 @@ Quality assertions and CI-friendly output formats.
 
 **Milestone**: `skillspar run suite.yaml --format junit --output results.xml` works in CI. ✅
 
-## Phase 4: Automated Skill Analysis — `/evaluate-skill`
+## Phase 4A: `/evaluate-skill` Meta-Skill ✅
 
 A SKILL.md that guides Claude Code through analyzing a target skill and generating a test suite. This is the key differentiator — no other tool can read a skill definition and automatically propose what to test, with baseline enabled by default so every generated suite answers "is this skill worth the context?"
 
-- [ ] `/evaluate-skill` skill that analyzes a target SKILL.md
-- [ ] Skill structure analysis: extract behavioral claims, tool-use patterns, examples, constraints
-- [ ] Automated test scenario generation with baseline enabled by default
-- [ ] `.eval.yaml` generation from skill analysis
-- [ ] Assertion type guidance: auto-generator should propose `llm_judge` for subjective quality criteria (tone, naturalness, completeness) and deterministic assertions for structural behaviors (tool calls, sequences, output keywords). Documentation should advise users that `output_contains`/`output_matches_regex` are brittle proxies for subjective quality and will break across model updates.
-- [ ] CLI result interpretation and feedback loop
-- [ ] PyPI packaging and distribution
-- [ ] Example suites for real-world skills that demonstrate measurable steer
-- [ ] Documentation
+- [x] `/evaluate-skill` SKILL.md with analysis protocol, inline schema reference, assertion selection rules, and baseline strategy
+- [x] Skill structure analysis: extract behavioral claims by category (output format, content rules, tone/style, tool-use patterns, workflow sequences, constraints/boundaries)
+- [x] Assertion type guidance: `llm_judge` for subjective quality, deterministic assertions for structural behaviors. Explicit warning against using `output_contains`/`output_matches_regex` as proxies for subjective quality.
+- [x] Single-turn vs multi-turn decision rules (prefer single-turn, use multi-turn only for tool-use workflows)
+- [x] Test generation conventions (verb-first names, one test per claim, holistic llm_judge test, realistic user messages)
+- [x] Example code review skill (`examples/code-review-skill/SKILL.md`) with both structural and subjective requirements
+- [x] Hand-validated reference eval suite (`examples/code-review-skill.eval.yaml`) — 9 tests demonstrating all assertion types with baseline
+
+**Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior. ✅
+
+## Phase 4B: Feedback Loop
+
+CLI result interpretation and iterative improvement of generated suites.
+
+- [ ] CLI result interpretation guidance (reading pass/fail output, understanding baseline deltas)
+- [ ] Suggest improvements to generated suites based on test results (flaky tests, weak assertions, missing coverage)
+- [ ] Iterative refinement workflow documentation
+
+**Milestone**: After running a generated suite, the user gets actionable guidance on improving both the suite and the skill.
+
+## Phase 4C: Documentation + README
+
+- [ ] Documentation refresh
 - [ ] Re-evaluate README prior to final release
 
-**Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior.
+## Phase 5: PyPI Packaging + Analytics (Future)
 
-## Phase 5: Analytics + Advanced (Future)
+- [ ] PyPI packaging and distribution
+
+## Phase 6: Analytics + Advanced (Future)
 
 - [ ] Sample size estimator — recommend run counts for statistically significant steer measurement
 - [ ] Analytics package — standardized reporting for skill vs. baseline comparison, cross-model steer analysis, and confidence intervals

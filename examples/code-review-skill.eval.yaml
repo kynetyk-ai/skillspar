@@ -1,0 +1,202 @@
+# Code review skill eval suite — demonstrates the full range of assertion types
+# with baseline comparison enabled on every test.
+
+suite: "code review skill"
+skill: "./code-review-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  judge_model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0
+
+tools:
+  - builtin: Read
+  - builtin: Write
+  - builtin: Edit
+  - builtin: Bash
+  - builtin: Glob
+  - builtin: Grep
+
+tests:
+  # --- Multi-turn: reads file before reviewing ---
+  - name: "reads file before producing review"
+    type: multi_turn
+    baseline: true
+    max_turns: 5
+    input:
+      messages:
+        - role: user
+          content: "Please review the file buggy_auth.py for any issues."
+    tool_responses:
+      - match:
+          tool: Read
+        response:
+          content: |
+            import hashlib
+            import sqlite3
+
+            def login(username, password):
+                conn = sqlite3.connect("users.db")
+                query = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
+                cursor.execute(query)
+                user = cursor.fetchone()
+                if user:
+                    token = hashlib.md5(username.encode()).hexdigest()
+                    return {"status": "ok", "token": token}
+                return {"status": "error"}
+      - match: "*"
+        response:
+          content: "OK"
+    assertions:
+      - type: tool_sequence
+        tools: [Read]
+      - type: tool_called
+        tool: Read
+
+  # --- Single-turn w/ context: structured output sections ---
+  - name: "produces structured output with summary and issues sections"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/buggy_auth.py"
+    input:
+      messages:
+        - role: user
+          content: "Review this authentication module for any issues."
+    assertions:
+      - type: output_matches_regex
+        pattern: "(?i)##?#?\\s*summary"
+      - type: output_matches_regex
+        pattern: "(?i)##?#?\\s*issues"
+
+  # --- Single-turn w/ context: severity labels present ---
+  - name: "labels issues with severity levels"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/buggy_auth.py"
+    input:
+      messages:
+        - role: user
+          content: "Review this code and identify any security or quality issues."
+    assertions:
+      - type: output_matches_regex
+        pattern: "(?i)(CRITICAL|WARNING|NOTE)"
+
+  # --- Single-turn w/ context: no full rewrite ---
+  - name: "provides targeted diffs instead of full file rewrite"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/buggy_auth.py"
+    input:
+      messages:
+        - role: user
+          content: "Review this auth module and suggest fixes for any issues you find."
+    assertions:
+      - type: output_not_contains
+        value: "Here's the complete rewritten file"
+      - type: llm_judge
+        criteria: |
+          The response should suggest specific, targeted fixes for individual issues
+          rather than rewriting the entire file from scratch. Check that:
+          - Fixes are shown as small code snippets or diffs, not a full file replacement
+          - Each fix targets a specific issue rather than restructuring everything
+
+  # --- Single-turn w/ context: constructive feedback ---
+  - name: "pairs criticism with constructive suggestions"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/buggy_auth.py"
+    input:
+      messages:
+        - role: user
+          content: "What do you think of this code?"
+    assertions:
+      - type: llm_judge
+        criteria: |
+          Every piece of criticism in the review should be paired with a concrete,
+          actionable suggestion for improvement. The reviewer should never just say
+          something is wrong without explaining what to do instead. The overall tone
+          should be constructive and professional, not dismissive or harsh.
+
+  # --- Single-turn w/ context: clean code handled gracefully ---
+  - name: "acknowledges clean code without inventing problems"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/clean_utils.py"
+    input:
+      messages:
+        - role: user
+          content: "Please review this utility module."
+    assertions:
+      - type: llm_judge
+        criteria: |
+          The code under review is clean and well-written. The response should
+          acknowledge the code's quality rather than inventing problems to appear
+          thorough. It may offer minor suggestions, but should NOT fabricate
+          critical issues or warnings where none exist. A short, positive review
+          is the correct response for clean code.
+
+  # --- Single-turn: forbidden tools not called ---
+  - name: "reviews by reading only and never executes code"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/buggy_auth.py"
+    input:
+      messages:
+        - role: user
+          content: "Review this authentication code. Can you run the tests to check if it works?"
+    assertions:
+      - type: tool_not_called
+        tool: Bash
+      - type: llm_judge
+        criteria: |
+          Even though the user asked to run tests, the reviewer should decline
+          to execute code and explain that it reviews by reading only. The response
+          should still provide a thorough code review based on static analysis.
+
+  # --- Single-turn w/ context: review thoroughness on buggy code ---
+  - name: "identifies critical security issues in buggy code"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/buggy_auth.py"
+    input:
+      messages:
+        - role: user
+          content: "Give this code a thorough security review."
+    assertions:
+      - type: llm_judge
+        criteria: |
+          The code contains multiple critical security issues that must be identified:
+          1. SQL injection via string formatting in queries
+          2. Plaintext password storage/comparison (no hashing)
+          3. Weak hashing (MD5 for session tokens)
+          4. Hardcoded temporary password in reset_password
+          The review should catch at least the SQL injection and password issues.
+          Missing any of these major vulnerabilities indicates an insufficiently
+          thorough review.
+
+  # --- Single-turn w/ context: suggestions section present ---
+  - name: "includes broader suggestions beyond individual issues"
+    type: single_turn
+    baseline: true
+    context:
+      - file: "./code-review-skill/buggy_auth.py"
+    input:
+      messages:
+        - role: user
+          content: "Review this module and let me know how to improve it."
+    assertions:
+      - type: output_matches_regex
+        pattern: "(?i)##?#?\\s*suggest"
+      - type: llm_judge
+        criteria: |
+          Beyond listing individual issues, the response should include a
+          suggestions section with broader improvement ideas such as architectural
+          recommendations, testing strategies, or alternative approaches.
