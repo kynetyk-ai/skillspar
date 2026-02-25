@@ -45,4 +45,4 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 
 ## Roadmap
 
-See ROADMAP.md. Phases 1–4D complete. Next: Phase 4E (watch mode).
+See ROADMAP.md. Phases 1–4E complete. Next: Phase 4F (CI, multi-suite & documentation).
