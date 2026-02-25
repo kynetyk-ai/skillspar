@@ -45,4 +45,4 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 
 ## Roadmap
 
-See ROADMAP.md. Phases 1–4A complete. Next: Phase 4B (schema stabilization & mid-conversation testing).
+See ROADMAP.md. Phases 1–4B complete. Next: Phase 4C (reporting & cost).

@@ -69,7 +69,7 @@ A SKILL.md that guides Claude Code through analyzing a target skill and generati
 
 **Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior. ✅
 
-## Phase 4B: Schema Stabilization & Mid-Conversation Testing
+## Phase 4B: Schema Stabilization & Mid-Conversation Testing ✅
 
 Finalize the YAML input schema before building features on top. The headline addition is
 mid-conversation skill testing — prepending a simulated conversation to measure whether a
@@ -77,32 +77,32 @@ skill still steers behavior after context dilution. Also includes internal refac
 unblocks later phases.
 
 ### YAML schema additions
-- [ ] `conversation_prefix` on `EvalSuite`: `ConversationPrefixConfig` schema with inline
+- [x] `conversation_prefix` on `EvalSuite`: `ConversationPrefixConfig` schema with inline
       `messages` list or external YAML `file` reference; validation for role alternation and
       assistant-final requirement
-- [ ] Prefix loader (`engine/prefix.py`): resolve external files, validate structure
-- [ ] Message ordering: skill_messages + prefix_messages + context_messages + test.input.messages;
+- [x] Prefix loader (`engine/prefix.py`): resolve external files, validate structure
+- [x] Message ordering: skill_messages + prefix_messages + context_messages + test.input.messages;
       prefix present in both skill and baseline runs
-- [ ] `cache_control` field on `MessageConfig`: mark last prefix message as cache breakpoint;
+- [x] `cache_control` field on `MessageConfig`: mark last prefix message as cache breakpoint;
       tag survives `_coalesce_consecutive_roles()` by propagating during merge
-- [ ] `enable_caching` field on `SuiteDefaults` / `ResolvedConfig` (default: `true`)
-- [ ] Structured system prompt: convert `system` parameter from plain string to content blocks
+- [x] `enable_caching` field on `SuiteDefaults` / `ResolvedConfig` (default: `true`)
+- [x] Structured system prompt: convert `system` parameter from plain string to content blocks
       with `cache_control` when caching is enabled (two cache breakpoints: system prompt shared
       across all requests, last prefix message shared within each skill/baseline group)
 
 ### Internal refactoring
-- [ ] Extract `run` logic from `cli.py` into a reusable `execute_suite()` function that
+- [x] Extract `run` logic from `cli.py` into a reusable `execute_suite()` function that
       returns a result code (prerequisite for watch mode and multi-suite runner)
-- [ ] Fix dual source of truth: runner reads `ResolvedConfig` exclusively, remove
+- [x] Fix dual source of truth: runner reads `ResolvedConfig` exclusively, remove
       `suite.defaults` back-sync in `cli.py`
-- [ ] Fix `TokenUsage.to_dict()` to stop dropping cache tokens
+- [x] Fix `TokenUsage.to_dict()` to stop dropping cache tokens
 
 ### Example & validation
-- [ ] Minimum-token-threshold warning when prefix is too short for effective caching (~1024 tokens)
-- [ ] Example suite: `examples/mid-conversation.eval.yaml` with a multi-turn prefix
+- [x] Minimum-token-threshold warning when prefix is too short for effective caching (~1024 tokens)
+- [x] Example suite: `examples/mid-conversation.eval.yaml` with a multi-turn prefix
 
 **Milestone**: `skillspar run mid-conversation.eval.yaml` prepends a simulated conversation,
-caches the shared prefix across all tests, and the YAML input schema is stable.
+caches the shared prefix across all tests, and the YAML input schema is stable. ✅
 
 ## Phase 4C: Reporting & Cost
 
