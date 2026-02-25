@@ -6,7 +6,7 @@ Skillspar provides baseline comparison to quantify the "steer" your skill provid
 
 ## Background
 
-Agent Skills turn general-purpose, tool-using agents into specialists for a specific task — without fine-tuning or custom code. A well-designed skill can make a smaller model match frontier-model behavior on a specific task, offering significant cost savings if the steer can be confirmed. And because skills are just prompt documents, they're arguably the most accessible path to rapid agent specialization.
+Agent Skills promise to turn general-purpose, tool-using agents into specialists for a specific task — without fine-tuning or custom code. A well-designed skill has potential to make a smaller model match frontier-model behavior on a specific task, offering significant cost savings if the steer can be confirmed. And because skills are just prompt documents, they're arguably the most accessible path to rapid agent specialization.
 
 Despite this potential, best practices for skill creation rely on intuition. Testing is manual if it happens at all: invoke the skill, eyeball the output, repeat. There are no quantitative tools for measuring the impact of skills on agent behavior — even on a relative basis. This makes it difficult to trust skills in production because fundamental questions go unanswered:
 
@@ -17,7 +17,7 @@ Despite this potential, best practices for skill creation rely on intuition. Tes
 
 ## The Solution
 
-Modern tool-using agents inject skills as user-role messages. Skillspar replicates this: it injects SKILL.md as a user message in simulated conversations, models file discovery via synthetic tool calls, and asserts on the resulting behavior.
+Many modern tool-using agents inject skills as user-role messages. Skillspar replicates this as part of the testing paradigm: it injects SKILL.md as a user message in simulated conversations, models file discovery via synthetic tool calls, and asserts on the resulting behavior.
 
 If the skill can't steer in isolation, it won't steer inside the full agent either.
 
@@ -40,6 +40,27 @@ tests:
     runs: 5           # repeat for statistical confidence
     # ...
 ```
+
+### Mid-Conversation Testing: Survive Context Dilution
+
+Skills are injected early in a conversation, but real usage buries them under turns of unrelated context. The `conversation_prefix` field prepends a simulated prior conversation before your test input, so you can measure whether the skill still steers after dilution.
+
+```yaml
+conversation_prefix:
+  messages:
+    - role: user
+      content: "Can you help me refactor this function?"
+    - role: assistant
+      content: "Sure! Could you share the function?"
+    # ... more turns of unrelated conversation
+
+tests:
+  - name: "skill activates after prior context"
+    baseline: true
+    # ...
+```
+
+Use `skill_position` to control where the skill is injected relative to the prefix — `top` (default) places the skill before the prefix to simulate maximum dilution, `bottom` places it after for a more favorable test.
 
 ## Quick Start
 
