@@ -142,33 +142,10 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
         sys.exit(2)
 
     # Compute cost and cache summaries
-    from skill_evaluator.reporting.cost import build_cost_summary, estimate_cache_savings
+    from skill_evaluator.reporting.cost import build_cache_summary, build_cost_summary
 
     cost_summary = build_cost_summary(suite_result, config.model)
-
-    # Build cache summary
-    cache_summary = None
-    total_cache_creation = 0
-    total_cache_read = 0
-    has_cache = False
-    for group in suite_result.test_results:
-        all_runs = list(group.runs) + (group.baseline_runs or [])
-        for r in all_runs:
-            if r.trace:
-                u = r.trace.total_usage
-                if u.cache_creation_input_tokens is not None:
-                    total_cache_creation += u.cache_creation_input_tokens
-                    has_cache = True
-                if u.cache_read_input_tokens is not None:
-                    total_cache_read += u.cache_read_input_tokens
-                    has_cache = True
-    if has_cache:
-        savings = estimate_cache_savings(total_cache_read, config.model)
-        cache_summary = {
-            "cache_creation_input_tokens": total_cache_creation,
-            "cache_read_input_tokens": total_cache_read,
-            "estimated_savings_usd": round(savings, 6) if savings is not None else None,
-        }
+    cache_summary = build_cache_summary(suite_result, config.model)
 
     reporter = ConsoleReporter(verbose=verbose)
     reporter.report(suite_result, cost_summary=cost_summary, cache_summary=cache_summary)
@@ -200,11 +177,60 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
         sys.exit(1)
 
 
+@main.command()
+@click.argument("eval_file", type=click.Path(exists=True))
+@click.option("--runs", type=int, default=None, help="Override suite default for runs per test.")
+@click.option(
+    "--concurrency", type=int, default=None, help="Override suite default for max parallel API calls."
+)
+@click.option(
+    "--filter", "filter_pattern", type=str, default=None,
+    help="Only run tests whose name contains this substring.",
+)
+@click.option(
+    "--model", type=str, default=None,
+    help="Override the suite default model.",
+)
+@click.option(
+    "--verbose", is_flag=True, default=False,
+    help="Show per-assertion details in console output.",
+)
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
+    default=None,
+    help="Set logging verbosity (default: WARNING).",
+)
+@click.option(
+    "--debounce", type=int, default=300,
+    help="Debounce interval in milliseconds (default: 300).",
+)
+def watch(eval_file, runs, concurrency, filter_pattern, model, verbose, log_level, debounce):
+    """Watch files and re-run an eval suite on changes."""
+    from dotenv import load_dotenv
+
+    from skill_evaluator.watch import watch_loop
+
+    load_dotenv()
+    _setup_logging(log_level)
+
+    exit_code = watch_loop(
+        Path(eval_file),
+        cli_runs=runs,
+        cli_concurrency=concurrency,
+        cli_model=model,
+        cli_filter_pattern=filter_pattern,
+        cli_verbose=verbose,
+        debounce_ms=debounce,
+    )
+    sys.exit(exit_code)
+
+
 def _run_suite_and_build_report(eval_file, model_override=None):
     """Load, execute, and build a JSON report for a suite. Returns (suite, report, suite_result)."""
     from dotenv import load_dotenv
 
-    from skill_evaluator.reporting.cost import build_cost_summary, estimate_cache_savings
+    from skill_evaluator.reporting.cost import build_cache_summary, build_cost_summary
     from skill_evaluator.reporting.json_report import JsonReporter
 
     load_dotenv()
@@ -224,30 +250,7 @@ def _run_suite_and_build_report(eval_file, model_override=None):
         sys.exit(2)
 
     cost_summary = build_cost_summary(suite_result, config.model)
-
-    # Build cache summary
-    cache_summary = None
-    total_cache_creation = 0
-    total_cache_read = 0
-    has_cache = False
-    for group in suite_result.test_results:
-        all_runs = list(group.runs) + (group.baseline_runs or [])
-        for r in all_runs:
-            if r.trace:
-                u = r.trace.total_usage
-                if u.cache_creation_input_tokens is not None:
-                    total_cache_creation += u.cache_creation_input_tokens
-                    has_cache = True
-                if u.cache_read_input_tokens is not None:
-                    total_cache_read += u.cache_read_input_tokens
-                    has_cache = True
-    if has_cache:
-        savings = estimate_cache_savings(total_cache_read, config.model)
-        cache_summary = {
-            "cache_creation_input_tokens": total_cache_creation,
-            "cache_read_input_tokens": total_cache_read,
-            "estimated_savings_usd": round(savings, 6) if savings is not None else None,
-        }
+    cache_summary = build_cache_summary(suite_result, config.model)
 
     reporter = ConsoleReporter(verbose=False)
     reporter.report(suite_result, cost_summary=cost_summary, cache_summary=cache_summary)

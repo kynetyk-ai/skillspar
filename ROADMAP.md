@@ -139,20 +139,22 @@ shrinks across runs.
 **Milestone**: `skillspar snapshot diff` shows per-test pass-rate deltas and flags steer
 erosion between runs. ✅
 
-## Phase 4E: Watch Mode
+## Phase 4E: Watch Mode ✅
 
 Tight edit→test loop for skill authors. Re-run suites automatically on file changes.
 Builds on `execute_suite()` (4B) and optionally on the diff engine (4D) for showing
 assertion flips between iterations.
 
-- [ ] Add `watchfiles` dependency (Rust-backed, reliable on macOS)
-- [ ] `skillspar watch` subcommand: initial full run, then re-run affected suites on
+- [x] Add `watchfiles` dependency (Rust-backed, reliable on macOS)
+- [x] `skillspar watch` subcommand: initial full run, then re-run affected suites on
       SKILL.md / YAML / context file changes
-- [ ] Debounced change detection (300ms window)
-- [ ] Rich live display: clear and re-render pass/fail summary on each iteration
-- [ ] Display assertion flips against previous iteration (building on 4D diff engine)
+- [x] Debounced change detection (300ms default, configurable via `--debounce`)
+- [x] Rich live display: clear and re-render pass/fail summary on each iteration
+- [x] Display assertion flips against previous iteration (building on 4D diff engine)
+- [x] Error resilience: syntax errors display inline, watcher continues
+- [x] Dynamic watch set: re-discovers files after each successful run
 
-**Milestone**: `skillspar watch suite.yaml` re-runs on save and shows live pass/fail output.
+**Milestone**: `skillspar watch suite.yaml` re-runs on save and shows live pass/fail output. ✅
 
 ## Phase 4F: CI, Multi-Suite & Documentation
 

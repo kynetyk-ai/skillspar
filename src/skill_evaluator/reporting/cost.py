@@ -102,6 +102,38 @@ def estimate_cache_savings(
     return cache_read_tokens * per_m_input * (1.0 - cache_read_mult) / 1_000_000
 
 
+def build_cache_summary(
+    suite_result: Any,
+    model: str,
+) -> dict[str, Any] | None:
+    """Build cache summary dict from a SuiteResult.
+
+    Returns None if no cache data is present.
+    """
+    total_cache_creation = 0
+    total_cache_read = 0
+    has_cache = False
+    for group in suite_result.test_results:
+        all_runs = list(group.runs) + (group.baseline_runs or [])
+        for r in all_runs:
+            if r.trace:
+                u = r.trace.total_usage
+                if u.cache_creation_input_tokens is not None:
+                    total_cache_creation += u.cache_creation_input_tokens
+                    has_cache = True
+                if u.cache_read_input_tokens is not None:
+                    total_cache_read += u.cache_read_input_tokens
+                    has_cache = True
+    if not has_cache:
+        return None
+    savings = estimate_cache_savings(total_cache_read, model)
+    return {
+        "cache_creation_input_tokens": total_cache_creation,
+        "cache_read_input_tokens": total_cache_read,
+        "estimated_savings_usd": round(savings, 6) if savings is not None else None,
+    }
+
+
 def build_cost_summary(
     suite_result: Any,
     model: str,
