@@ -33,20 +33,29 @@ class JunitReporter:
                     errors += 1
                     break
 
-        ts = ET.SubElement(
-            root, "testsuite",
-            name=group.test_name,
-            tests=str(len(group.runs)),
-            failures=str(failures),
-            errors=str(errors),
-        )
+        ts_attrs: dict[str, str] = {
+            "name": group.test_name,
+            "tests": str(len(group.runs)),
+            "failures": str(failures),
+            "errors": str(errors),
+        }
+        group_duration = group.duration_seconds
+        if group_duration is not None:
+            ts_attrs["time"] = f"{group_duration:.3f}"
+        ts = ET.SubElement(root, "testsuite", **ts_attrs)
 
         if group.is_multi_run:
             for i, run in enumerate(group.runs):
-                tc = ET.SubElement(ts, "testcase", name=f"{group.test_name} [run {i}]")
+                tc_attrs: dict[str, str] = {"name": f"{group.test_name} [run {i}]"}
+                if run.duration_seconds is not None:
+                    tc_attrs["time"] = f"{run.duration_seconds:.3f}"
+                tc = ET.SubElement(ts, "testcase", **tc_attrs)
                 self._add_assertion_elements(tc, run)
         else:
-            tc = ET.SubElement(ts, "testcase", name=group.test_name)
+            tc_attrs = {"name": group.test_name}
+            if group.runs[0].duration_seconds is not None:
+                tc_attrs["time"] = f"{group.runs[0].duration_seconds:.3f}"
+            tc = ET.SubElement(ts, "testcase", **tc_attrs)
             self._add_assertion_elements(tc, group.runs[0])
 
     def _add_baseline_group(self, root: ET.Element, group: TestRunGroup) -> None:
@@ -59,16 +68,22 @@ class JunitReporter:
                     errors += 1
                     break
 
-        ts = ET.SubElement(
-            root, "testsuite",
-            name=f"{group.test_name} [baseline]",
-            tests=str(len(baseline_runs)),
-            failures=str(failures),
-            errors=str(errors),
-        )
+        bl_durations = [r.duration_seconds for r in baseline_runs if r.duration_seconds is not None]
+        ts_attrs: dict[str, str] = {
+            "name": f"{group.test_name} [baseline]",
+            "tests": str(len(baseline_runs)),
+            "failures": str(failures),
+            "errors": str(errors),
+        }
+        if bl_durations:
+            ts_attrs["time"] = f"{sum(bl_durations):.3f}"
+        ts = ET.SubElement(root, "testsuite", **ts_attrs)
 
         for i, run in enumerate(baseline_runs):
-            tc = ET.SubElement(ts, "testcase", name=f"{group.test_name} [baseline run {i}]")
+            tc_attrs: dict[str, str] = {"name": f"{group.test_name} [baseline run {i}]"}
+            if run.duration_seconds is not None:
+                tc_attrs["time"] = f"{run.duration_seconds:.3f}"
+            tc = ET.SubElement(ts, "testcase", **tc_attrs)
             self._add_assertion_elements(tc, run)
 
     def _add_assertion_elements(self, testcase: ET.Element, run) -> None:

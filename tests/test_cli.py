@@ -269,7 +269,7 @@ class TestCli:
 
         runner = CliRunner()
         result = runner.invoke(main, ["run", str(eval_file), "--filter", "nonexistent"])
-        assert result.exit_code == 1
+        assert result.exit_code == 2
         assert "no tests match" in result.output
 
     @patch("skill_evaluator.cli.execute_suite")

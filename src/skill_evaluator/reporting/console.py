@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from rich.console import Console
 
@@ -18,6 +18,7 @@ class TestResult:
     test_name: str
     assertion_results: list[AssertionResult] = field(default_factory=list)
     trace: Trace | None = None
+    duration_seconds: float | None = None
 
     @property
     def passed(self) -> bool:
@@ -33,7 +34,7 @@ class TestResult:
         return "PASS" if self.passed else "FAIL"
 
     def to_dict(self) -> dict:
-        return {
+        d: dict = {
             "assertions": [
                 {
                     "type": r.assertion_type,
@@ -46,6 +47,9 @@ class TestResult:
             "passed": self.passed,
             "trace": self.trace.to_dict() if self.trace else None,
         }
+        if self.duration_seconds is not None:
+            d["duration_seconds"] = round(self.duration_seconds, 3)
+        return d
 
 
 @dataclass
@@ -85,8 +89,25 @@ class TestRunGroup:
             return self.runs[0].status_label
         return "PASS" if self.passed else "FAIL"
 
+    @property
+    def duration_seconds(self) -> float | None:
+        """Sum of run durations, or None if no runs have timing data."""
+        durations = [r.duration_seconds for r in self.runs if r.duration_seconds is not None]
+        if self.baseline_runs:
+            durations += [r.duration_seconds for r in self.baseline_runs if r.duration_seconds is not None]
+        return sum(durations) if durations else None
+
     def to_dict(self) -> dict:
         total = len(self.runs)
+        summary: dict = {
+            "pass_count": self.pass_count,
+            "total_runs": total,
+            "pass_rate": self.pass_rate,
+            "passed": self.passed,
+        }
+        dur = self.duration_seconds
+        if dur is not None:
+            summary["duration_seconds"] = round(dur, 3)
         result: dict = {
             "name": self.test_name,
             "config": {
@@ -94,12 +115,7 @@ class TestRunGroup:
                 "pass_threshold": self.pass_threshold,
                 "baseline": self.baseline_runs is not None,
             },
-            "summary": {
-                "pass_count": self.pass_count,
-                "total_runs": total,
-                "pass_rate": self.pass_rate,
-                "passed": self.passed,
-            },
+            "summary": summary,
             "runs": [
                 {"run_index": i, **r.to_dict()} for i, r in enumerate(self.runs)
             ],
@@ -122,6 +138,8 @@ class TestRunGroup:
 class SuiteResult:
     suite_name: str
     test_results: list[TestRunGroup] = field(default_factory=list)
+    run_id: str | None = None
+    skill_file_hash: str | None = None
 
     @property
     def passed_count(self) -> int:
@@ -151,7 +169,13 @@ class ConsoleReporter:
         self.console = console or Console()
         self.verbose = verbose
 
-    def report(self, suite_result: SuiteResult) -> None:
+    def report(
+        self,
+        suite_result: SuiteResult,
+        *,
+        cost_summary: dict[str, Any] | None = None,
+        cache_summary: dict[str, Any] | None = None,
+    ) -> None:
         self.console.print()
         self.console.print(f"[bold]Suite: {suite_result.suite_name}[/bold]")
         self.console.print()
@@ -173,6 +197,34 @@ class ConsoleReporter:
             self.console.print(
                 f"[red bold]{failed}/{total} tests failed[/red bold], "
                 f"{passed}/{total} passed"
+            )
+
+        if self.verbose:
+            self._print_cost_cache_summary(cost_summary, cache_summary)
+
+    def _print_cost_cache_summary(
+        self,
+        cost_summary: dict[str, Any] | None,
+        cache_summary: dict[str, Any] | None,
+    ) -> None:
+        if cost_summary:
+            total = cost_summary.get("total_cost_usd", 0)
+            skill = cost_summary.get("skill_cost_usd", 0)
+            baseline = cost_summary.get("baseline_cost_usd")
+            if baseline:
+                self.console.print(
+                    f"[dim]Cost: ${total:.2f} (skill: ${skill:.2f}, baseline: ${baseline:.2f})[/dim]"
+                )
+            else:
+                self.console.print(f"[dim]Cost: ${total:.2f}[/dim]")
+
+        if cache_summary:
+            reads = cache_summary.get("cache_read_input_tokens", 0)
+            writes = cache_summary.get("cache_creation_input_tokens", 0)
+            savings = cache_summary.get("estimated_savings_usd")
+            savings_str = f" (~${savings:.2f} saved)" if savings else ""
+            self.console.print(
+                f"[dim]Cache: {reads:,} reads, {writes:,} writes{savings_str}[/dim]"
             )
 
     def _report_single_run(self, group: TestRunGroup) -> None:

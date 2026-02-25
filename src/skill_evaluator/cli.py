@@ -10,8 +10,10 @@ from pathlib import Path
 import click
 
 from skill_evaluator.config.loader import ConfigLoadError, load_eval_suite, resolve_config
+from skill_evaluator.engine.prefix import PrefixLoadError
 from skill_evaluator.executor import execute_suite
 from skill_evaluator.reporting.console import ConsoleReporter
+from skill_evaluator.skill.parser import SkillParseError
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +107,7 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
         suite = load_eval_suite(eval_file)
     except ConfigLoadError as e:
         click.echo(f"Error: {e}", err=True)
-        sys.exit(1)
+        sys.exit(2)
 
     # Resolve format before config so we can pass it through
     if output_format is None:
@@ -131,12 +133,45 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
         suite.tests = [t for t in suite.tests if pattern_lower in t.name.lower()]
         if not suite.tests:
             click.echo(f"Error: no tests match filter '{filter_pattern}'", err=True)
-            sys.exit(1)
+            sys.exit(2)
 
-    suite_result = execute_suite(Path(eval_file), suite, config)
+    try:
+        suite_result = execute_suite(Path(eval_file), suite, config)
+    except (SkillParseError, PrefixLoadError) as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
+
+    # Compute cost and cache summaries
+    from skill_evaluator.reporting.cost import build_cost_summary, estimate_cache_savings
+
+    cost_summary = build_cost_summary(suite_result, config.model)
+
+    # Build cache summary
+    cache_summary = None
+    total_cache_creation = 0
+    total_cache_read = 0
+    has_cache = False
+    for group in suite_result.test_results:
+        all_runs = list(group.runs) + (group.baseline_runs or [])
+        for r in all_runs:
+            if r.trace:
+                u = r.trace.total_usage
+                if u.cache_creation_input_tokens is not None:
+                    total_cache_creation += u.cache_creation_input_tokens
+                    has_cache = True
+                if u.cache_read_input_tokens is not None:
+                    total_cache_read += u.cache_read_input_tokens
+                    has_cache = True
+    if has_cache:
+        savings = estimate_cache_savings(total_cache_read, config.model)
+        cache_summary = {
+            "cache_creation_input_tokens": total_cache_creation,
+            "cache_read_input_tokens": total_cache_read,
+            "estimated_savings_usd": round(savings, 6) if savings is not None else None,
+        }
 
     reporter = ConsoleReporter(verbose=verbose)
-    reporter.report(suite_result)
+    reporter.report(suite_result, cost_summary=cost_summary, cache_summary=cache_summary)
 
     resolved = _resolve_output_path(config.output, output_format, suite.suite)
 
@@ -152,7 +187,12 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
             from skill_evaluator.reporting.json_report import JsonReporter
 
             json_reporter = JsonReporter()
-            report = json_reporter.build_report(suite, suite_result)
+            report = json_reporter.build_report(suite, suite_result, model=config.model)
+            # Inject cost and cache data into report summary
+            if cost_summary:
+                report["summary"]["cost"] = cost_summary
+            if cache_summary:
+                report["summary"]["cache_summary"] = cache_summary
             json_reporter.write(report, resolved)
             click.echo(f"JSON report written to {resolved}")
 

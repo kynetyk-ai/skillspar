@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import time
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -94,10 +97,12 @@ class SuiteRunner:
 
     def run(self) -> SuiteResult:
         """Run all tests and return results."""
-        logger.info("Starting suite '%s' (%d tests)", self.suite.suite, len(self.suite.tests))
+        run_id = str(uuid.uuid4())
+        logger.info("Starting suite '%s' (%d tests) run_id=%s", self.suite.suite, len(self.suite.tests), run_id)
         skill_path = resolve_skill_path(self.eval_file, self.suite.skill)
         skill = parse_skill(skill_path)
         skill_body = skill.body
+        skill_file_hash = hashlib.sha256(skill_path.read_bytes()).hexdigest()
 
         suite_tools = resolve_tools(self.suite.tools)
 
@@ -157,7 +162,11 @@ class SuiteRunner:
                     )
 
         # Assemble into TestRunGroups
-        suite_result = SuiteResult(suite_name=self.suite.suite)
+        suite_result = SuiteResult(
+            suite_name=self.suite.suite,
+            run_id=run_id,
+            skill_file_hash=skill_file_hash,
+        )
         for idx, test in enumerate(self.suite.tests):
             runs_count = self._effective_runs(test)
             threshold = self._effective_threshold(test)
@@ -238,6 +247,7 @@ class SuiteRunner:
 
         system_prompt = self._build_system_prompt()
         executor = SingleTurnExecutor(self.client, self.config)
+        t0 = time.monotonic()
         try:
             trace = executor.execute(
                 system_prompt, input_config, tools=suite_tools or None
@@ -254,14 +264,21 @@ class SuiteRunner:
                         message=f"Execution failed: {e}",
                     )
                 ],
+                duration_seconds=time.monotonic() - t0,
             )
+        duration = time.monotonic() - t0
 
         assertion_results = evaluate_assertions(
             test.assertions, trace,
             client=self.client,
             judge_model=self.config.judge_model or self.config.model,
         )
-        return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)
+        return TestResult(
+            test_name=test.name,
+            assertion_results=assertion_results,
+            trace=trace,
+            duration_seconds=duration,
+        )
 
     def _run_multi_turn(
         self,
@@ -302,6 +319,7 @@ class SuiteRunner:
             max_turns=test.max_turns,
         )
 
+        t0 = time.monotonic()
         try:
             trace = executor.execute(system_prompt, input_config)
         except Exception as e:
@@ -316,11 +334,18 @@ class SuiteRunner:
                         message=f"Execution failed: {e}",
                     )
                 ],
+                duration_seconds=time.monotonic() - t0,
             )
+        duration = time.monotonic() - t0
 
         assertion_results = evaluate_assertions(
             test.assertions, trace,
             client=self.client,
             judge_model=self.config.judge_model or self.config.model,
         )
-        return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)
+        return TestResult(
+            test_name=test.name,
+            assertion_results=assertion_results,
+            trace=trace,
+            duration_seconds=duration,
+        )
