@@ -1,5 +1,6 @@
 """CLI entry point for skillspar."""
 
+import logging
 import os
 import re
 import sys
@@ -7,13 +8,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import click
-from dotenv import load_dotenv
 
-load_dotenv()
-
-from skill_evaluator.config.loader import ConfigLoadError, load_eval_suite
+from skill_evaluator.config.loader import ConfigLoadError, load_eval_suite, resolve_config
 from skill_evaluator.reporting.console import ConsoleReporter
 from skill_evaluator.runner import SuiteRunner
+
+logger = logging.getLogger(__name__)
 
 
 def _slugify(name: str) -> str:
@@ -26,8 +26,6 @@ def _slugify(name: str) -> str:
 
 def _resolve_output_path(output: str | None, output_format: str, suite_name: str) -> Path | None:
     """Resolve the output file path from --output flag and format."""
-    if output is None:
-        output = os.environ.get("SKILLSPAR_OUTPUT")
     if output is None:
         return None
 
@@ -42,6 +40,22 @@ def _resolve_output_path(output: str | None, output_format: str, suite_name: str
     slug = _slugify(suite_name)
     ext = "xml" if output_format == "junit" else "json"
     return path / f"{slug}_{timestamp}.{ext}"
+
+
+def _setup_logging(log_level: str | None) -> None:
+    """Configure the root skill_evaluator logger."""
+    if log_level is None:
+        log_level = os.environ.get("SKILLSPAR_LOG_LEVEL", "WARNING")
+    level = getattr(logging, log_level.upper(), logging.WARNING)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+        datefmt="%H:%M:%S",
+    )
+    logging.getLogger("skill_evaluator").setLevel(level)
+    # Silence noisy third-party loggers
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("anthropic").setLevel(logging.WARNING)
 
 
 @click.group()
@@ -73,20 +87,48 @@ def main():
     "--verbose", is_flag=True, default=False,
     help="Show per-assertion details in console output.",
 )
-def run(eval_file, runs, concurrency, output, output_format, filter_pattern, model, verbose):
+@click.option(
+    "--log-level",
+    type=click.Choice(["DEBUG", "INFO", "WARNING", "ERROR"], case_sensitive=False),
+    default=None,
+    help="Set logging verbosity (default: WARNING).",
+)
+def run(eval_file, runs, concurrency, output, output_format, filter_pattern, model, verbose, log_level):
     """Run an eval suite from a .eval.yaml file."""
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    _setup_logging(log_level)
+
     try:
         suite = load_eval_suite(eval_file)
     except ConfigLoadError as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(1)
 
-    if runs is not None:
-        suite.defaults.runs = runs
-    if concurrency is not None:
-        suite.defaults.concurrency = concurrency
-    if model is not None:
-        suite.defaults.model = model
+    # Resolve format before config so we can pass it through
+    if output_format is None:
+        if output and Path(output).suffix == ".xml":
+            output_format = "junit"
+        else:
+            output_format = "json"
+
+    config = resolve_config(
+        suite.defaults,
+        cli_runs=runs,
+        cli_concurrency=concurrency,
+        cli_model=model,
+        cli_output=output,
+        cli_output_format=output_format,
+        cli_verbose=verbose,
+        cli_filter_pattern=filter_pattern,
+    )
+
+    # Sync resolved values back to suite.defaults for backward compat
+    suite.defaults.runs = config.runs
+    suite.defaults.concurrency = config.concurrency
+    suite.defaults.model = config.model
 
     # Filter tests by name substring
     if filter_pattern is not None:
@@ -96,20 +138,13 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
             click.echo(f"Error: no tests match filter '{filter_pattern}'", err=True)
             sys.exit(1)
 
-    runner = SuiteRunner(eval_file, suite)
+    runner = SuiteRunner(eval_file, suite, config=config)
     suite_result = runner.run()
 
     reporter = ConsoleReporter(verbose=verbose)
     reporter.report(suite_result)
 
-    # Determine format: explicit flag > extension inference > json default
-    if output_format is None:
-        if output and Path(output).suffix == ".xml":
-            output_format = "junit"
-        else:
-            output_format = "json"
-
-    resolved = _resolve_output_path(output, output_format, suite.suite)
+    resolved = _resolve_output_path(config.output, output_format, suite.suite)
 
     if resolved is not None:
         if output_format == "junit":

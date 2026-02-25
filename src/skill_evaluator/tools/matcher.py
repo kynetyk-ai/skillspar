@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import logging
+
 from skill_evaluator.config.schema import ToolMatchConfig, ToolResponseConfig
 from skill_evaluator.engine.trace import ToolCall
+
+logger = logging.getLogger(__name__)
 
 
 class NoMatchError(Exception):
@@ -28,6 +32,7 @@ def match_tool_response(
 
     Raises ``NoMatchError`` if nothing matches.
     """
+    logger.debug("Matching tool call '%s' against %d rules", tool_call.name, len(tool_responses))
     for idx, tr in enumerate(tool_responses):
         if _matches(tr.match, tool_call):
             if call_counts is not None:
@@ -36,7 +41,9 @@ def match_tool_response(
                 call_counts[idx] = count + 1
             else:
                 response = tr.get_response()
+            logger.debug("Matched tool call '%s' with rule %d", tool_call.name, idx)
             return response
+    logger.warning("No matching tool response for tool call '%s'", tool_call.name)
     raise NoMatchError(
         f"No matching tool response for tool call '{tool_call.name}' "
         f"(id={tool_call.id})"

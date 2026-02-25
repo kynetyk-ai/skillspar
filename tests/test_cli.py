@@ -36,18 +36,13 @@ def _make_passing_suite_result():
 
 
 def _make_mock_suite(*, real_values=False):
+    from skill_evaluator.config.schema import SuiteDefaults
+
     mock_suite = MagicMock()
-    mock_suite.defaults = MagicMock()
-    mock_suite.defaults.runs = 1
-    mock_suite.defaults.concurrency = 1
+    mock_suite.defaults = SuiteDefaults()
     if real_values:
         mock_suite.suite = "test"
         mock_suite.skill = "./SKILL.md"
-        mock_suite.defaults.model = "claude-sonnet-4-5-20250929"
-        mock_suite.defaults.max_tokens = 4096
-        mock_suite.defaults.temperature = 0
-        mock_suite.defaults.pass_threshold = 1.0
-        mock_suite.defaults.max_retries = 2
     return mock_suite
 
 
@@ -330,3 +325,19 @@ class TestCli:
             result = runner.invoke(main, ["run", str(eval_file), "--verbose"])
             assert result.exit_code == 0
             mock_reporter_cls.assert_called_once_with(verbose=True)
+
+    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.load_eval_suite")
+    def test_log_level_flag(self, mock_load, mock_runner_cls, tmp_path):
+        """--log-level is accepted without error."""
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text("placeholder")
+
+        mock_load.return_value = _make_mock_suite()
+        mock_runner = MagicMock()
+        mock_runner_cls.return_value = mock_runner
+        mock_runner.run.return_value = _make_passing_suite_result()
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["run", str(eval_file), "--log-level", "DEBUG"])
+        assert result.exit_code == 0

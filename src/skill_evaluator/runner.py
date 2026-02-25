@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,7 @@ from skill_evaluator.config.schema import (
     InputConfig,
     MessageConfig,
     MultiTurnTest,
+    ResolvedConfig,
     SingleTurnTest,
 )
 from skill_evaluator.engine.context import ContextFileError, build_context_messages
@@ -24,6 +26,8 @@ from skill_evaluator.engine.single_turn import SingleTurnExecutor
 from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 from skill_evaluator.skill.parser import parse_skill
 from skill_evaluator.tools.registry import resolve_tools
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -43,10 +47,12 @@ class SuiteRunner:
         eval_file: Path,
         suite: EvalSuite,
         client: Anthropic | None = None,
+        config: ResolvedConfig | None = None,
     ) -> None:
         self.eval_file = Path(eval_file)
         self.suite = suite
         self.client = client or Anthropic(max_retries=suite.defaults.max_retries)
+        self.config = config
 
     def _effective_runs(self, test: SingleTurnTest | MultiTurnTest) -> int:
         return test.runs if test.runs is not None else self.suite.defaults.runs
@@ -60,6 +66,7 @@ class SuiteRunner:
 
     def run(self) -> SuiteResult:
         """Run all tests and return results."""
+        logger.info("Starting suite '%s' (%d tests)", self.suite.suite, len(self.suite.tests))
         skill_path = resolve_skill_path(self.eval_file, self.suite.skill)
         skill = parse_skill(skill_path)
         system_prompt = skill.body
@@ -78,6 +85,8 @@ class SuiteRunner:
                     work_items.append(
                         _WorkItem(idx, test, run_i, is_baseline=True, system_prompt="")
                     )
+
+        logger.debug("Built %d work items", len(work_items))
 
         # Execute work items
         results_map: dict[tuple[int, int, bool], TestResult] = {}
@@ -122,11 +131,20 @@ class SuiteRunner:
             )
             suite_result.test_results.append(group)
 
+        passed = sum(1 for g in suite_result.test_results if g.passed)
+        logger.info(
+            "Suite '%s' complete: %d/%d tests passed",
+            self.suite.suite, passed, len(suite_result.test_results),
+        )
         return suite_result
 
     def _execute_work_item(
         self, item: _WorkItem, suite_tools: list[dict[str, Any]]
     ) -> TestResult:
+        logger.debug(
+            "Dispatching test '%s' run=%d baseline=%s",
+            item.test.name, item.run_index, item.is_baseline,
+        )
         if isinstance(item.test, MultiTurnTest):
             return self._run_multi_turn(item.test, item.system_prompt, suite_tools)
         return self._run_single_turn(item.test, item.system_prompt, suite_tools)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from anthropic import Anthropic
@@ -9,6 +10,8 @@ from anthropic import Anthropic
 from skill_evaluator.config.schema import InputConfig, SuiteDefaults
 from skill_evaluator.engine.conversation import build_messages
 from skill_evaluator.engine.trace import TokenUsage, ToolCall, Trace, Turn
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutionError(Exception):
@@ -77,11 +80,22 @@ class SingleTurnExecutor:
         if tools:
             kwargs["tools"] = tools
 
+        logger.debug(
+            "API call: model=%s, max_tokens=%d, temperature=%s, tools=%d, messages=%d",
+            self.defaults.model, self.defaults.max_tokens,
+            self.defaults.temperature, len(tools or []), len(messages),
+        )
+
         try:
             response = self.client.messages.create(**kwargs)
         except Exception as e:
+            logger.error("API call failed: %s", e)
             raise ExecutionError(f"API call failed: {e}") from e
 
+        logger.debug(
+            "API response: stop_reason=%s, input_tokens=%d, output_tokens=%d",
+            response.stop_reason, response.usage.input_tokens, response.usage.output_tokens,
+        )
         return self._build_trace(response)
 
     def _build_trace(self, response: Any) -> Trace:

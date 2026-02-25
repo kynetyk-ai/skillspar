@@ -11,6 +11,7 @@ from skill_evaluator.config.schema import (
     MultiTurnTest,
     OutputContainsAssertion,
     OutputMatchesRegexAssertion,
+    ResolvedConfig,
     SingleTurnTest,
     StopReasonAssertion,
     SuiteDefaults,
@@ -384,3 +385,43 @@ class TestToolResponseConfig:
         assert tr.get_response(1) == {"content": "last"}
         assert tr.get_response(2) == {"content": "last"}
         assert tr.get_response(100) == {"content": "last"}
+
+
+class TestResolvedConfig:
+    def test_defaults(self):
+        config = ResolvedConfig()
+        assert config.model == "claude-sonnet-4-5-20250929"
+        assert config.judge_model == ""
+        assert config.max_tokens == 4096
+        assert config.temperature == 0
+        assert config.runs == 1
+        assert config.pass_threshold == 1.0
+        assert config.max_retries == 2
+        assert config.concurrency == 1
+        assert config.output is None
+        assert config.output_format == "json"
+        assert config.verbose is False
+        assert config.filter_pattern is None
+
+    def test_frozen(self):
+        config = ResolvedConfig()
+        with pytest.raises(Exception):
+            config.model = "new-model"
+
+    def test_custom_values(self):
+        config = ResolvedConfig(
+            model="custom-model",
+            runs=5,
+            concurrency=3,
+            output="./out",
+            output_format="junit",
+            verbose=True,
+            filter_pattern="test_*",
+        )
+        assert config.model == "custom-model"
+        assert config.runs == 5
+        assert config.concurrency == 3
+        assert config.output == "./out"
+        assert config.output_format == "junit"
+        assert config.verbose is True
+        assert config.filter_pattern == "test_*"

@@ -2,8 +2,14 @@
 
 import pytest
 
-from skill_evaluator.config.loader import ConfigLoadError, load_eval_suite, resolve_skill_path
-from skill_evaluator.config.schema import EvalSuite
+from skill_evaluator.config.loader import (
+    ConfigLoadError,
+    _apply_env_defaults,
+    load_eval_suite,
+    resolve_config,
+    resolve_skill_path,
+)
+from skill_evaluator.config.schema import EvalSuite, SuiteDefaults
 
 
 class TestResolveSkillPath:
@@ -79,3 +85,87 @@ tests:
         eval_file.write_text(yaml_content)
         with pytest.raises(ConfigLoadError, match="Skill file not found"):
             load_eval_suite(eval_file)
+
+
+class TestApplyEnvDefaults:
+    def test_env_var_injected_when_yaml_key_absent(self, monkeypatch):
+        monkeypatch.setenv("SKILLSPAR_MODEL", "claude-opus-4")
+        raw = {"defaults": {}}
+        _apply_env_defaults(raw)
+        assert raw["defaults"]["model"] == "claude-opus-4"
+
+    def test_yaml_key_preserved_when_present(self, monkeypatch):
+        monkeypatch.setenv("SKILLSPAR_MODEL", "claude-opus-4")
+        raw = {"defaults": {"model": "yaml-model"}}
+        _apply_env_defaults(raw)
+        assert raw["defaults"]["model"] == "yaml-model"
+
+    def test_no_env_var_no_change(self, monkeypatch):
+        monkeypatch.delenv("SKILLSPAR_MODEL", raising=False)
+        monkeypatch.delenv("SKILLSPAR_JUDGE_MODEL", raising=False)
+        raw = {"defaults": {}}
+        _apply_env_defaults(raw)
+        assert "model" not in raw["defaults"]
+        assert "judge_model" not in raw["defaults"]
+
+    def test_judge_model_env_injected(self, monkeypatch):
+        monkeypatch.setenv("SKILLSPAR_JUDGE_MODEL", "judge-model")
+        raw = {"defaults": {}}
+        _apply_env_defaults(raw)
+        assert raw["defaults"]["judge_model"] == "judge-model"
+
+    def test_judge_model_yaml_preserved(self, monkeypatch):
+        monkeypatch.setenv("SKILLSPAR_JUDGE_MODEL", "env-judge")
+        raw = {"defaults": {"judge_model": "yaml-judge"}}
+        _apply_env_defaults(raw)
+        assert raw["defaults"]["judge_model"] == "yaml-judge"
+
+    def test_creates_defaults_key_if_missing(self, monkeypatch):
+        monkeypatch.setenv("SKILLSPAR_MODEL", "test-model")
+        raw = {}
+        _apply_env_defaults(raw)
+        assert raw["defaults"]["model"] == "test-model"
+
+
+class TestResolveConfig:
+    def test_cli_overrides_take_precedence(self):
+        defaults = SuiteDefaults(runs=1, concurrency=1, model="yaml-model")
+        config = resolve_config(
+            defaults, cli_runs=5, cli_concurrency=3, cli_model="cli-model",
+        )
+        assert config.runs == 5
+        assert config.concurrency == 3
+        assert config.model == "cli-model"
+
+    def test_defaults_flow_through(self):
+        defaults = SuiteDefaults(runs=3, concurrency=2, model="yaml-model")
+        config = resolve_config(defaults)
+        assert config.runs == 3
+        assert config.concurrency == 2
+        assert config.model == "yaml-model"
+
+    def test_env_output_used_when_cli_none(self, monkeypatch):
+        monkeypatch.setenv("SKILLSPAR_OUTPUT", "./results")
+        defaults = SuiteDefaults()
+        config = resolve_config(defaults, cli_output=None)
+        assert config.output == "./results"
+
+    def test_cli_output_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("SKILLSPAR_OUTPUT", "./results")
+        defaults = SuiteDefaults()
+        config = resolve_config(defaults, cli_output="./custom")
+        assert config.output == "./custom"
+
+    def test_verbose_and_filter(self):
+        defaults = SuiteDefaults()
+        config = resolve_config(
+            defaults, cli_verbose=True, cli_filter_pattern="greeting",
+        )
+        assert config.verbose is True
+        assert config.filter_pattern == "greeting"
+
+    def test_config_is_frozen(self):
+        defaults = SuiteDefaults()
+        config = resolve_config(defaults)
+        with pytest.raises(Exception):
+            config.runs = 10

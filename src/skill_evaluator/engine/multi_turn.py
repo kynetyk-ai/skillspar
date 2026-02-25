@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
 from anthropic import Anthropic
@@ -12,6 +13,8 @@ from skill_evaluator.engine.conversation import build_messages
 from skill_evaluator.engine.single_turn import build_turn_from_response
 from skill_evaluator.engine.trace import Trace
 from skill_evaluator.tools.matcher import match_tool_response
+
+logger = logging.getLogger(__name__)
 
 
 class MultiTurnExecutionError(Exception):
@@ -41,7 +44,12 @@ class MultiTurnExecutor:
         trace = Trace()
         call_counts: dict[int, int] = {}
 
-        for _ in range(self.max_turns):
+        logger.debug(
+            "Multi-turn loop: model=%s, max_turns=%d, response_rules=%d",
+            self.defaults.model, self.max_turns, len(self.tool_responses),
+        )
+
+        for turn_num in range(self.max_turns):
             kwargs: dict[str, Any] = {
                 "model": self.defaults.model,
                 "max_tokens": self.defaults.max_tokens,
@@ -56,10 +64,16 @@ class MultiTurnExecutor:
             try:
                 response = self.client.messages.create(**kwargs)
             except Exception as e:
+                logger.error("API call failed on turn %d: %s", turn_num, e)
                 raise MultiTurnExecutionError(f"API call failed: {e}") from e
 
             turn = build_turn_from_response(response)
             trace.add_turn(turn)
+
+            logger.debug(
+                "Turn %d: stop_reason=%s, messages=%d, tool_calls=%d",
+                turn_num, turn.stop_reason, len(messages), len(turn.tool_calls),
+            )
 
             if turn.stop_reason != "tool_use":
                 break
@@ -89,4 +103,5 @@ class MultiTurnExecutor:
                 })
             messages.append({"role": "user", "content": tool_result_blocks})
 
+        logger.info("Multi-turn loop complete after %d turn(s)", len(trace.turns))
         return trace

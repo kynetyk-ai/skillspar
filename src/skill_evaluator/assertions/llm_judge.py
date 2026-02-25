@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
@@ -11,6 +12,8 @@ if TYPE_CHECKING:
 
     from skill_evaluator.config.schema import LLMJudgeAssertion
     from skill_evaluator.engine.trace import Trace
+
+logger = logging.getLogger(__name__)
 
 
 _SYSTEM_PROMPT = (
@@ -75,6 +78,7 @@ def check_llm_judge(
     """Evaluate a trace against criteria using a second LLM call."""
     model = assertion.model or judge_model
     if not model:
+        logger.warning("No model specified for LLM judge — returning error")
         return AssertionResult(
             status=AssertionStatus.ERROR,
             assertion_type="llm_judge",
@@ -82,6 +86,10 @@ def check_llm_judge(
         )
 
     user_prompt = _build_judge_prompt(trace, assertion.criteria)
+    logger.debug(
+        "LLM judge: model=%s, criteria='%s', prompt_length=%d",
+        model, assertion.criteria[:80], len(user_prompt),
+    )
 
     try:
         response = client.messages.create(
@@ -92,6 +100,7 @@ def check_llm_judge(
             messages=[{"role": "user", "content": user_prompt}],
         )
     except Exception as e:
+        logger.error("LLM judge API error: %s", e)
         return AssertionResult(
             status=AssertionStatus.ERROR,
             assertion_type="llm_judge",
@@ -113,6 +122,7 @@ def check_llm_judge(
             details={"raw_response": response_text[:500]},
         )
 
+    logger.debug("LLM judge verdict: %s, reasoning='%s'", "PASS" if passed else "FAIL", reasoning[:80] if reasoning else "")
     return AssertionResult(
         status=AssertionStatus.PASSED if passed else AssertionStatus.FAILED,
         assertion_type="llm_judge",

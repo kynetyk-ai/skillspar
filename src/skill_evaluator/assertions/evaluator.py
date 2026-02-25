@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
@@ -35,6 +36,8 @@ from skill_evaluator.config.schema import (
 )
 from skill_evaluator.engine.trace import Trace
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from anthropic import Anthropic
 
@@ -64,6 +67,7 @@ def evaluate_assertions(
     Returns one ``AssertionResult`` per assertion. Unimplemented assertion
     types return SKIPPED; exceptions during evaluation return ERROR.
     """
+    logger.debug("Evaluating %d assertion(s)", len(assertions))
     results: list[AssertionResult] = []
     for assertion in assertions:
         # LLM judge requires special handling (needs API client)
@@ -100,8 +104,10 @@ def evaluate_assertions(
             continue
         try:
             result = handler(assertion, trace)
+            logger.debug("Assertion %s: %s", assertion.type, result.status.value)
             results.append(result)
         except Exception as e:
+            logger.debug("Assertion %s: ERROR (%s)", assertion.type, e)
             results.append(AssertionResult(
                 status=AssertionStatus.ERROR,
                 assertion_type=assertion.type,

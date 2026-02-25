@@ -81,5 +81,5 @@ A SKILL.md that guides Claude Code through analyzing a target skill and generati
 - [x] Flakiness detection (run N times, report variance) — *done in Phase 1 (repeated runs + pass_threshold)*
 - [ ] A/B model comparison (same skill across model versions — does the steer hold?)
 - [ ] Response caching for faster re-runs
-- [ ] Centralized config (consolidate env vars, CLI flags, YAML defaults, and .env into a unified config layer)
-- [ ] Structured logging (replace ad-hoc output with configurable log levels for debugging, execution traces, and CI diagnostics)
+- [x] Centralized config (consolidate env vars, CLI flags, YAML defaults, and .env into a unified config layer)
+- [x] Structured logging (replace ad-hoc output with configurable log levels for debugging, execution traces, and CI diagnostics)
