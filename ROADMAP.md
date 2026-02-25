@@ -69,88 +69,104 @@ A SKILL.md that guides Claude Code through analyzing a target skill and generati
 
 **Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior. ✅
 
-## Phase 4B: Feedback Loop
+## Phase 4B: Schema Stabilization & Mid-Conversation Testing
 
-CLI result interpretation and iterative improvement of generated suites.
+Finalize the YAML input schema before building features on top. The headline addition is
+mid-conversation skill testing — prepending a simulated conversation to measure whether a
+skill still steers behavior after context dilution. Also includes internal refactoring that
+unblocks later phases.
 
-- [ ] CLI result interpretation guidance (reading pass/fail output, understanding baseline deltas)
-- [ ] Suggest improvements to generated suites based on test results (flaky tests, weak assertions, missing coverage)
-- [ ] Iterative refinement workflow documentation
-
-**Milestone**: After running a generated suite, the user gets actionable guidance on improving both the suite and the skill.
-
-## Phase 4C: Documentation + README
-
-- [ ] Documentation refresh
-- [ ] Re-evaluate README prior to final release
-
-## Phase 4D: Watch Mode (Fast Iteration Feedback)
-
-Tight edit→test loop for skill authors. Re-run suites automatically on file changes.
-
-- [ ] Extract `run` logic from `cli.py` into a reusable `execute_suite()` function that returns a result code (prerequisite for watch loop and exit code refinement)
-- [ ] Fix dual source of truth: runner reads `ResolvedConfig` exclusively, remove `suite.defaults` back-sync in `cli.py`
-- [ ] Add `watchfiles` dependency (Rust-backed, reliable on macOS)
-- [ ] `skillspar watch` subcommand: initial full run, then re-run affected suites on SKILL.md / YAML / context file changes
-- [ ] Debounced change detection (300ms window)
-- [ ] Rich live display: clear and re-render pass/fail summary on each iteration
-
-**Milestone**: `skillspar watch suite.yaml` re-runs on save and shows live pass/fail output.
-
-## Phase 4E: Stored Baselines & Temporal Diffing
-
-Snapshot results over time and detect steer erosion — when a skill's behavioral delta shrinks across runs.
-
-- [ ] Enrich JSON report: add `schema_version`, `run_id`, skill file hash; include `judge_model` and `system_prompt` in defaults; fix `TokenUsage.to_dict()` to stop dropping cache tokens
-- [ ] Snapshot reader/deserializer (`src/skill_evaluator/reporting/snapshot.py`)
-- [ ] Diff engine (`src/skill_evaluator/reporting/diff.py`): per-test pass_rate_delta, assertion flips, steer erosion detection (baseline pass rate rising → skill becoming redundant)
-- [ ] Snapshot CLI: `skillspar snapshot save`, `skillspar snapshot diff`
-- [ ] `.skillspar/snapshots/` storage directory (git-friendly, per-project, optional `--snapshot-dir` override)
-- [ ] Console delta display: show what flipped when comparing against a previous snapshot
-- [ ] Enhance watch mode: display assertion flips against previous iteration (building on diff engine)
-
-**Milestone**: `skillspar snapshot diff` shows per-test pass-rate deltas and flags steer erosion between runs.
-
-## Phase 4F: CI & Team Workflow
-
-Multi-suite execution, cost tracking, and CI-friendly exit codes for team-scale usage.
-
-- [ ] Exit code refinement: 0 = all passed, 1 = tests failed, 2 = config/validation error
-- [ ] Cost tracking: pricing table, `estimate_cost()`, cost section in JSON report summary, `SKILLSPAR_PRICING_FILE` env var override
-- [ ] Duration tracking: `duration_seconds` on `TestResult`, `time=` attributes in JUnit XML
-- [ ] Multi-suite runner: `skillspar run` accepts multiple files, globs, or directories
-- [ ] Multi-suite summary reporter: aggregated dashboard view across a skill library (table of suite name, pass/fail, cost, baseline delta)
-
-**Milestone**: `skillspar run examples/ --format junit` runs all suites, exits with distinct codes, and includes cost + duration in reports.
-
-## Phase 4G: Mid-Conversation Skill Testing & Prompt Caching
-
-Test whether a skill still steers model behavior when preceded by a long, unrelated
-conversation — the realistic scenario where a user has been chatting for a while before
-triggering the skill. Uses Anthropic prompt caching so the prefix doesn't multiply
-token costs across all tests in the suite.
-
-Depends on **4E** (cache token export in `TokenUsage.to_dict()`) and **4F** (cost tracking
-with `estimate_cost()`) so that cache savings are visible in reports and priced correctly
-(1.25× writes, 0.1× reads).
-
-- [ ] `ConversationPrefixConfig` schema: inline `messages` list or external YAML `file`
-      reference, with validation for role alternation and assistant-final requirement
+### YAML schema additions
+- [ ] `conversation_prefix` on `EvalSuite`: `ConversationPrefixConfig` schema with inline
+      `messages` list or external YAML `file` reference; validation for role alternation and
+      assistant-final requirement
 - [ ] Prefix loader (`engine/prefix.py`): resolve external files, validate structure
 - [ ] Message ordering: skill_messages + prefix_messages + context_messages + test.input.messages;
       prefix present in both skill and baseline runs
-- [ ] Structured system prompt: convert `system` parameter from plain string to content blocks
-      with `cache_control` when caching is enabled
-- [ ] `cache_control` injection on messages: mark last prefix message as cache breakpoint;
-      add `cache_control` field to `MessageConfig` so markers survive role coalescing
+- [ ] `cache_control` field on `MessageConfig`: mark last prefix message as cache breakpoint;
+      tag survives `_coalesce_consecutive_roles()` by propagating during merge
 - [ ] `enable_caching` field on `SuiteDefaults` / `ResolvedConfig` (default: `true`)
+- [ ] Structured system prompt: convert `system` parameter from plain string to content blocks
+      with `cache_control` when caching is enabled (two cache breakpoints: system prompt shared
+      across all requests, last prefix message shared within each skill/baseline group)
+
+### Internal refactoring
+- [ ] Extract `run` logic from `cli.py` into a reusable `execute_suite()` function that
+      returns a result code (prerequisite for watch mode and multi-suite runner)
+- [ ] Fix dual source of truth: runner reads `ResolvedConfig` exclusively, remove
+      `suite.defaults` back-sync in `cli.py`
+- [ ] Fix `TokenUsage.to_dict()` to stop dropping cache tokens
+
+### Example & validation
 - [ ] Minimum-token-threshold warning when prefix is too short for effective caching (~1024 tokens)
-- [ ] Cache reporting: `cache_summary` in JSON report (writes, reads, estimated savings);
-      console one-liner when caching is active
 - [ ] Example suite: `examples/mid-conversation.eval.yaml` with a multi-turn prefix
 
 **Milestone**: `skillspar run mid-conversation.eval.yaml` prepends a simulated conversation,
-caches the shared prefix across all tests, and reports cache hit rates in the output.
+caches the shared prefix across all tests, and the YAML input schema is stable.
+
+## Phase 4C: Reporting & Cost
+
+Enrich report output with cost, duration, cache visibility, and structural metadata.
+No YAML input changes — this is all about what comes *out* of a run.
+
+- [ ] Enrich JSON report: add `schema_version`, `run_id`, skill file hash; include
+      `judge_model` and `system_prompt` in defaults
+- [ ] Cost tracking: pricing table, `estimate_cost()`, cache pricing (1.25× writes, 0.1× reads),
+      cost section in JSON report summary, `SKILLSPAR_PRICING_FILE` env var override
+- [ ] Duration tracking: `duration_seconds` on `TestResult`, `time=` attributes in JUnit XML
+- [ ] Cache reporting: `cache_summary` in JSON report (writes, reads, estimated savings);
+      console one-liner when caching is active
+- [ ] Exit code refinement: 0 = all passed, 1 = tests failed, 2 = config/validation error
+
+**Milestone**: JSON and JUnit reports include cost, duration, and cache hit rates; exit codes
+are CI-friendly.
+
+## Phase 4D: Stored Baselines & Temporal Diffing
+
+Snapshot results over time and detect steer erosion — when a skill's behavioral delta
+shrinks across runs.
+
+- [ ] Snapshot reader/deserializer (`src/skill_evaluator/reporting/snapshot.py`)
+- [ ] Diff engine (`src/skill_evaluator/reporting/diff.py`): per-test pass_rate_delta,
+      assertion flips, steer erosion detection (baseline pass rate rising → skill becoming redundant)
+- [ ] Snapshot CLI: `skillspar snapshot save`, `skillspar snapshot diff`
+- [ ] `.skillspar/snapshots/` storage directory (git-friendly, per-project, optional
+      `--snapshot-dir` override)
+- [ ] Console delta display: show what flipped when comparing against a previous snapshot
+
+**Milestone**: `skillspar snapshot diff` shows per-test pass-rate deltas and flags steer
+erosion between runs.
+
+## Phase 4E: Watch Mode
+
+Tight edit→test loop for skill authors. Re-run suites automatically on file changes.
+Builds on `execute_suite()` (4B) and optionally on the diff engine (4D) for showing
+assertion flips between iterations.
+
+- [ ] Add `watchfiles` dependency (Rust-backed, reliable on macOS)
+- [ ] `skillspar watch` subcommand: initial full run, then re-run affected suites on
+      SKILL.md / YAML / context file changes
+- [ ] Debounced change detection (300ms window)
+- [ ] Rich live display: clear and re-render pass/fail summary on each iteration
+- [ ] Display assertion flips against previous iteration (building on 4D diff engine)
+
+**Milestone**: `skillspar watch suite.yaml` re-runs on save and shows live pass/fail output.
+
+## Phase 4F: CI, Multi-Suite & Documentation
+
+Multi-suite execution for team-scale usage, plus documentation that reflects the now-stable
+schema and feature set.
+
+- [ ] Multi-suite runner: `skillspar run` accepts multiple files, globs, or directories
+- [ ] Multi-suite summary reporter: aggregated dashboard view across a skill library
+      (table of suite name, pass/fail, cost, baseline delta)
+- [ ] CLI result interpretation guidance (reading pass/fail output, understanding baseline deltas)
+- [ ] Iterative refinement workflow (improving suites based on test results: flaky tests,
+      weak assertions, missing coverage)
+- [ ] Documentation refresh and README re-evaluation
+
+**Milestone**: `skillspar run examples/` runs all suites with an aggregated summary, and
+documentation covers the full feature set.
 
 ## Phase 5: Release Readiness + PyPI (Future)
 
@@ -189,8 +205,8 @@ CI/CD, packaging metadata, error handling polish, and code quality enforcement �
 
 - [ ] Sample size estimator — recommend run counts for statistically significant steer measurement
 - [ ] Analytics package — standardized reporting for skill vs. baseline comparison, cross-model steer analysis, and confidence intervals
-- [x] Steer strength metric — quantify the delta between skill and baseline pass rates — *subsumed by Phase 4E (steer erosion detection, pass_rate_delta)*
-- [x] Snapshot testing (golden trace diffing for tool call sequences) — *subsumed by Phase 4E (stored baselines & temporal diffing)*
+- [x] Steer strength metric — quantify the delta between skill and baseline pass rates — *subsumed by Phase 4D (steer erosion detection, pass_rate_delta)*
+- [x] Snapshot testing (golden trace diffing for tool call sequences) — *subsumed by Phase 4D (stored baselines & temporal diffing)*
 - [x] Flakiness detection (run N times, report variance) — *done in Phase 1 (repeated runs + pass_threshold)*
 - [ ] A/B model comparison (same skill across model versions — does the steer hold?)
 - [ ] Response caching for faster re-runs
