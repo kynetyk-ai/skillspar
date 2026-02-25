@@ -35,6 +35,7 @@ Inline messages:
 
 ```yaml
 conversation_prefix:
+  skill_position: top                  # Optional: "top" (default) or "bottom"
   messages:
     - role: user
       content: "Can you help me refactor this function?"
@@ -57,6 +58,7 @@ Rules:
 - Specify either `messages` or `file`, not both
 - Messages must end with an `assistant` message
 - When `enable_caching: true` (default), the last prefix message gets a cache breakpoint so the prefix is shared across all tests in each skill/baseline group
+- `skill_position` controls where the skill sits relative to the prefix (see Message Ordering below)
 
 ## Tools Declaration
 
@@ -149,11 +151,22 @@ Use this to simulate prior tool interactions without running a full multi-turn l
 
 ## Message Ordering
 
-Messages are assembled in this order for each API call:
+The `skill_position` field on `conversation_prefix` controls ordering:
+
+**`top` (default):** Skill → Prefix → Context → Test
 
 1. **Skill message** (user) — injected from the SKILL.md
 2. **Prefix messages** (user/assistant pairs) — from `conversation_prefix`
 3. **Context messages** (user/assistant/tool_result) — from suite-level or test-level `context`
 4. **Test input messages** (user) — from `test.input.messages`
+
+**`bottom`:** Prefix → Skill → Context → Test
+
+1. **Prefix messages** (user/assistant pairs) — from `conversation_prefix`
+2. **Skill message** (user) — injected from the SKILL.md
+3. **Context messages** (user/assistant/tool_result) — from suite-level or test-level `context`
+4. **Test input messages** (user) — from `test.input.messages`
+
+Use `top` (default) to test whether the skill survives context dilution — the prefix pushes the skill further from the test input. Use `bottom` to place the skill closer to the test input, simulating a skill activated mid-conversation.
 
 Consecutive same-role messages are automatically coalesced to maintain valid role alternation.

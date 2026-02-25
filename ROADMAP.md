@@ -104,22 +104,22 @@ unblocks later phases.
 **Milestone**: `skillspar run mid-conversation.eval.yaml` prepends a simulated conversation,
 caches the shared prefix across all tests, and the YAML input schema is stable. ✅
 
-## Phase 4C: Reporting & Cost
+## Phase 4C: Reporting & Cost ✅
 
 Enrich report output with cost, duration, cache visibility, and structural metadata.
 No YAML input changes — this is all about what comes *out* of a run.
 
-- [ ] Enrich JSON report: add `schema_version`, `run_id`, skill file hash; include
+- [x] Enrich JSON report: add `schema_version`, `run_id`, skill file hash; include
       `judge_model` and `system_prompt` in defaults
-- [ ] Cost tracking: pricing table, `estimate_cost()`, cache pricing (1.25× writes, 0.1× reads),
+- [x] Cost tracking: pricing table, `estimate_cost()`, cache pricing (1.25× writes, 0.1× reads),
       cost section in JSON report summary, `SKILLSPAR_PRICING_FILE` env var override
-- [ ] Duration tracking: `duration_seconds` on `TestResult`, `time=` attributes in JUnit XML
-- [ ] Cache reporting: `cache_summary` in JSON report (writes, reads, estimated savings);
+- [x] Duration tracking: `duration_seconds` on `TestResult`, `time=` attributes in JUnit XML
+- [x] Cache reporting: `cache_summary` in JSON report (writes, reads, estimated savings);
       console one-liner when caching is active
-- [ ] Exit code refinement: 0 = all passed, 1 = tests failed, 2 = config/validation error
+- [x] Exit code refinement: 0 = all passed, 1 = tests failed, 2 = config/validation error
 
 **Milestone**: JSON and JUnit reports include cost, duration, and cache hit rates; exit codes
-are CI-friendly.
+are CI-friendly. ✅
 
 ## Phase 4D: Stored Baselines & Temporal Diffing
 

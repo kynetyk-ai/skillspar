@@ -45,4 +45,4 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 
 ## Roadmap
 
-See ROADMAP.md. Phases 1–4B complete. Next: Phase 4C (reporting & cost).
+See ROADMAP.md. Phases 1–4C complete. Next: Phase 4D (stored baselines & temporal diffing).
