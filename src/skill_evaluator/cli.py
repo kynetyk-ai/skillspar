@@ -10,8 +10,8 @@ from pathlib import Path
 import click
 
 from skill_evaluator.config.loader import ConfigLoadError, load_eval_suite, resolve_config
+from skill_evaluator.executor import execute_suite
 from skill_evaluator.reporting.console import ConsoleReporter
-from skill_evaluator.runner import SuiteRunner
 
 logger = logging.getLogger(__name__)
 
@@ -125,11 +125,6 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
         cli_filter_pattern=filter_pattern,
     )
 
-    # Sync resolved values back to suite.defaults for backward compat
-    suite.defaults.runs = config.runs
-    suite.defaults.concurrency = config.concurrency
-    suite.defaults.model = config.model
-
     # Filter tests by name substring
     if filter_pattern is not None:
         pattern_lower = filter_pattern.lower()
@@ -138,8 +133,7 @@ def run(eval_file, runs, concurrency, output, output_format, filter_pattern, mod
             click.echo(f"Error: no tests match filter '{filter_pattern}'", err=True)
             sys.exit(1)
 
-    runner = SuiteRunner(eval_file, suite, config=config)
-    suite_result = runner.run()
+    suite_result = execute_suite(Path(eval_file), suite, config)
 
     reporter = ConsoleReporter(verbose=verbose)
     reporter.report(suite_result)

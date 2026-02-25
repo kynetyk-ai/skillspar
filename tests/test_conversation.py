@@ -81,6 +81,51 @@ class TestBuildMessages:
         assert result[2]["role"] == "user"  # tool_result + plain user merged
 
 
+class TestCacheControlPropagation:
+    def test_user_message_with_cache_control(self):
+        messages = [
+            MessageConfig(role="user", content="Hello", cache_control={"type": "ephemeral"}),
+        ]
+        result = build_messages(messages)
+        assert result[0]["role"] == "user"
+        assert isinstance(result[0]["content"], list)
+        assert result[0]["content"][0]["type"] == "text"
+        assert result[0]["content"][0]["text"] == "Hello"
+        assert result[0]["content"][0]["cache_control"] == {"type": "ephemeral"}
+
+    def test_assistant_message_with_cache_control(self):
+        messages = [
+            MessageConfig(role="user", content="Hi"),
+            MessageConfig(
+                role="assistant",
+                content="Hello!",
+                cache_control={"type": "ephemeral"},
+            ),
+        ]
+        result = build_messages(messages)
+        assistant_msg = result[1]
+        assert assistant_msg["content"][-1]["cache_control"] == {"type": "ephemeral"}
+
+    def test_user_without_cache_control_stays_string(self):
+        messages = [MessageConfig(role="user", content="Hello")]
+        result = build_messages(messages)
+        assert result[0]["content"] == "Hello"
+
+    def test_cache_control_survives_coalescing(self):
+        """cache_control on a user message survives when merged with another user."""
+        messages = [
+            MessageConfig(role="user", content="Part 1", cache_control={"type": "ephemeral"}),
+            MessageConfig(role="user", content="Part 2"),
+        ]
+        result = build_messages(messages)
+        assert len(result) == 1  # coalesced
+        content = result[0]["content"]
+        assert isinstance(content, list)
+        # First block should have cache_control from the first message
+        assert content[0]["cache_control"] == {"type": "ephemeral"}
+        assert content[1]["text"] == "Part 2"
+
+
 class TestCoalesceConsecutiveRoles:
     def test_tool_result_and_plain_user_merged(self):
         """tool_result (user) followed by plain user → single user message."""

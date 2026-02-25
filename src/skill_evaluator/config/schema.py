@@ -119,6 +119,7 @@ class MessageConfig(BaseModel):
     content: str | None = None
     tool_calls: list[ToolCallConfig] | None = None
     tool_use_id: str | None = None
+    cache_control: dict[str, str] | None = None
 
 
 class InputConfig(BaseModel):
@@ -244,6 +245,7 @@ class SuiteDefaults(BaseModel):
     pass_threshold: float = 1.0
     max_retries: int = 2
     concurrency: int = 1
+    enable_caching: bool = True
 
     @field_validator("runs")
     @classmethod
@@ -274,12 +276,35 @@ class SuiteDefaults(BaseModel):
         return v
 
 
+class ConversationPrefixConfig(BaseModel):
+    """Configuration for prepending a simulated conversation to test messages."""
+
+    messages: list[MessageConfig] | None = None
+    file: str | None = None
+
+    @model_validator(mode="after")
+    def validate_source(self) -> ConversationPrefixConfig:
+        has_messages = self.messages is not None
+        has_file = self.file is not None
+        if has_messages and has_file:
+            raise ValueError("Specify either 'messages' or 'file', not both")
+        if not has_messages and not has_file:
+            raise ValueError("One of 'messages' or 'file' is required")
+        if has_messages:
+            if len(self.messages) == 0:
+                raise ValueError("'messages' must not be empty")
+            if self.messages[-1].role != "assistant":
+                raise ValueError("Prefix messages must end with an assistant message")
+        return self
+
+
 class EvalSuite(BaseModel):
     suite: str
     skill: str
     context: list[ContextFileConfig] | None = None
     defaults: SuiteDefaults = SuiteDefaults()
     tools: list[ToolConfig] | None = None
+    conversation_prefix: ConversationPrefixConfig | None = None
     tests: list[TestConfig]
 
 
@@ -300,6 +325,7 @@ class ResolvedConfig(BaseModel, frozen=True):
     pass_threshold: float = 1.0
     max_retries: int = 2
     concurrency: int = 1
+    enable_caching: bool = True
     output: str | None = None
     output_format: str = "json"
     verbose: bool = False

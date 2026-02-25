@@ -7,7 +7,7 @@ from typing import Any
 
 from anthropic import Anthropic
 
-from skill_evaluator.config.schema import InputConfig, SuiteDefaults
+from skill_evaluator.config.schema import InputConfig, ResolvedConfig
 from skill_evaluator.engine.conversation import build_messages
 from skill_evaluator.engine.trace import TokenUsage, ToolCall, Trace, Turn
 
@@ -56,13 +56,13 @@ def build_turn_from_response(response: Any) -> Turn:
 class SingleTurnExecutor:
     """Executes a single API call and returns a Trace."""
 
-    def __init__(self, client: Anthropic, defaults: SuiteDefaults) -> None:
+    def __init__(self, client: Anthropic, config: ResolvedConfig) -> None:
         self.client = client
-        self.defaults = defaults
+        self.config = config
 
     def execute(
         self,
-        system_prompt: str,
+        system_prompt: str | list[dict],
         input_config: InputConfig,
         tools: list[dict[str, Any]] | None = None,
     ) -> Trace:
@@ -70,20 +70,20 @@ class SingleTurnExecutor:
         messages = build_messages(input_config.messages)
 
         kwargs: dict[str, Any] = {
-            "model": self.defaults.model,
-            "max_tokens": self.defaults.max_tokens,
+            "model": self.config.model,
+            "max_tokens": self.config.max_tokens,
             "system": system_prompt,
             "messages": messages,
         }
-        if self.defaults.temperature is not None:
-            kwargs["temperature"] = self.defaults.temperature
+        if self.config.temperature is not None:
+            kwargs["temperature"] = self.config.temperature
         if tools:
             kwargs["tools"] = tools
 
         logger.debug(
             "API call: model=%s, max_tokens=%d, temperature=%s, tools=%d, messages=%d",
-            self.defaults.model, self.defaults.max_tokens,
-            self.defaults.temperature, len(tools or []), len(messages),
+            self.config.model, self.config.max_tokens,
+            self.config.temperature, len(tools or []), len(messages),
         )
 
         try:

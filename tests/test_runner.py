@@ -1,7 +1,9 @@
 """Tests for runner.py — end-to-end with mock client."""
 
+import logging
 
 from skill_evaluator.config.loader import load_eval_suite
+from skill_evaluator.config.schema import ResolvedConfig
 from skill_evaluator.runner import SuiteRunner
 
 
@@ -805,3 +807,305 @@ tests:
 
         assert result.all_passed is True
         assert mock_anthropic_client.messages.create.call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# New: Prefix integration
+# ---------------------------------------------------------------------------
+
+
+class TestSuiteRunnerPrefix:
+    def _make_prefix_suite(self, tmp_path, extra_yaml="", prefix_yaml=""):
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir(exist_ok=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nYou are a helpful assistant.")
+
+        yaml_content = f"""
+suite: "prefix test"
+skill: "./skills/SKILL.md"
+defaults:
+  system_prompt: "You are helpful."
+{prefix_yaml}
+{extra_yaml}
+tests:
+  - type: single_turn
+    name: "basic"
+    input:
+      messages:
+        - role: user
+          content: "Hello"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+        return eval_file
+
+    def test_prefix_messages_appear_between_skill_and_input(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        prefix_yaml = """
+conversation_prefix:
+  messages:
+    - role: user
+      content: "How do I sort a list?"
+    - role: assistant
+      content: "Use sorted() or list.sort()."
+"""
+        eval_file = self._make_prefix_suite(tmp_path, prefix_yaml=prefix_yaml)
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        call_kwargs = mock_anthropic_client.messages.create.call_args
+        messages = call_kwargs.kwargs["messages"]
+        # Messages should contain: skill(user) + prefix(user, asst) + test(user)
+        # After coalescing: skill+prefix_user merged → user, assistant, user
+        msg_str = str(messages)
+        assert "The following skill has been activated" in msg_str
+        assert "How do I sort a list?" in msg_str
+        assert "Use sorted()" in msg_str
+
+    def test_prefix_present_in_both_skill_and_baseline_runs(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        yaml_content = """
+suite: "prefix test"
+skill: "./skills/SKILL.md"
+conversation_prefix:
+  messages:
+    - role: user
+      content: "setup question"
+    - role: assistant
+      content: "setup answer"
+tests:
+  - type: single_turn
+    name: "baseline check"
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Hello"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir(exist_ok=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nYou are helpful.")
+
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        calls = mock_anthropic_client.messages.create.call_args_list
+        assert len(calls) == 2  # skill + baseline
+        # Both should contain the prefix
+        for call in calls:
+            msg_str = str(call.kwargs["messages"])
+            assert "setup question" in msg_str
+            assert "setup answer" in msg_str
+
+    def test_cache_control_on_last_prefix_message(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        prefix_yaml = """
+conversation_prefix:
+  messages:
+    - role: user
+      content: "question"
+    - role: assistant
+      content: "answer"
+"""
+        eval_file = self._make_prefix_suite(tmp_path, prefix_yaml=prefix_yaml)
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        call_kwargs = mock_anthropic_client.messages.create.call_args
+        messages = call_kwargs.kwargs["messages"]
+        # Find the assistant message containing the prefix answer
+        for msg in messages:
+            if msg["role"] == "assistant":
+                content = msg["content"]
+                if isinstance(content, list):
+                    for block in content:
+                        if block.get("text") == "answer":
+                            assert block.get("cache_control") == {"type": "ephemeral"}
+                            return
+                elif isinstance(content, str) and "answer" in content:
+                    # Content is a string — cache_control won't be embedded
+                    # but it should be in list format when cache_control is set
+                    pass
+        # The cache_control should have been found on the prefix message
+        # Since the assistant prefix message gets cache_control tagged,
+        # and build_messages converts it to content blocks with cache_control
+        messages_str = str(messages)
+        assert "ephemeral" in messages_str
+
+    def test_structured_system_prompt_when_caching_enabled(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        eval_file = self._make_prefix_suite(tmp_path)
+        suite = load_eval_suite(eval_file)
+        # Default enable_caching=True
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        call_kwargs = mock_anthropic_client.messages.create.call_args
+        system = call_kwargs.kwargs["system"]
+        # Should be structured content with cache_control
+        assert isinstance(system, list)
+        assert system[0]["type"] == "text"
+        assert system[0]["text"] == "You are helpful."
+        assert system[0]["cache_control"] == {"type": "ephemeral"}
+
+    def test_string_system_prompt_when_caching_disabled(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        yaml_content = """
+suite: "test"
+skill: "./skills/SKILL.md"
+defaults:
+  system_prompt: "You are helpful."
+  enable_caching: false
+tests:
+  - type: single_turn
+    name: "basic"
+    input:
+      messages:
+        - role: user
+          content: "Hello"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir(exist_ok=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nBody")
+
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        call_kwargs = mock_anthropic_client.messages.create.call_args
+        system = call_kwargs.kwargs["system"]
+        assert isinstance(system, str)
+        assert system == "You are helpful."
+
+    def test_external_file_prefix_loads(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir(exist_ok=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nBody")
+
+        prefix_file = tmp_path / "prefix.yaml"
+        prefix_file.write_text(
+            '- role: user\n  content: "external question"\n'
+            '- role: assistant\n  content: "external answer"\n'
+        )
+
+        yaml_content = """
+suite: "test"
+skill: "./skills/SKILL.md"
+conversation_prefix:
+  file: "./prefix.yaml"
+tests:
+  - type: single_turn
+    name: "basic"
+    input:
+      messages:
+        - role: user
+          content: "Hello"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        call_kwargs = mock_anthropic_client.messages.create.call_args
+        msg_str = str(call_kwargs.kwargs["messages"])
+        assert "external question" in msg_str
+        assert "external answer" in msg_str
+
+    def test_token_threshold_warning_logged(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message, caplog
+    ):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        prefix_yaml = """
+conversation_prefix:
+  messages:
+    - role: user
+      content: "short"
+    - role: assistant
+      content: "reply"
+"""
+        eval_file = self._make_prefix_suite(tmp_path, prefix_yaml=prefix_yaml)
+        suite = load_eval_suite(eval_file)
+        with caplog.at_level(logging.WARNING, logger="skill_evaluator.runner"):
+            runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+            runner.run()
+
+        assert any("below minimum cache threshold" in r.message for r in caplog.records)
+
+    def test_empty_system_prompt_stays_string_even_with_caching(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """When system_prompt is empty, don't wrap in structured format."""
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
+
+        yaml_content = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: single_turn
+    name: "basic"
+    input:
+      messages:
+        - role: user
+          content: "Hello"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir(exist_ok=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nBody")
+
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        call_kwargs = mock_anthropic_client.messages.create.call_args
+        system = call_kwargs.kwargs["system"]
+        assert isinstance(system, str)
+        assert system == ""

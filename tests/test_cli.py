@@ -58,35 +58,31 @@ class TestCli:
         result = runner.invoke(main, ["run", "nonexistent.yaml"])
         assert result.exit_code != 0
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_run_success(self, mock_load, mock_runner_cls, tmp_path):
+    def test_run_success(self, mock_load, mock_execute, tmp_path):
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
 
         mock_load.return_value = _make_mock_suite()
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(main, ["run", str(eval_file)])
         assert result.exit_code == 0
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_run_failure_exit_code(self, mock_load, mock_runner_cls, tmp_path):
+    def test_run_failure_exit_code(self, mock_load, mock_execute, tmp_path):
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
 
         mock_load.return_value = _make_mock_suite()
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
 
         from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
         from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 
-        mock_runner.run.return_value = SuiteResult(
+        mock_execute.return_value = SuiteResult(
             suite_name="test",
             test_results=[
                 TestRunGroup(
@@ -111,43 +107,40 @@ class TestCli:
         result = runner.invoke(main, ["run", str(eval_file)])
         assert result.exit_code == 1
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_runs_flag_applied(self, mock_load, mock_runner_cls, tmp_path):
+    def test_runs_flag_applied(self, mock_load, mock_execute, tmp_path):
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
 
-        mock_suite = _make_mock_suite()
-        mock_load.return_value = mock_suite
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_load.return_value = _make_mock_suite()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(main, ["run", str(eval_file), "--runs", "5"])
         assert result.exit_code == 0
-        assert mock_suite.defaults.runs == 5
+        # config is the 3rd positional arg to execute_suite(eval_file, suite, config)
+        config = mock_execute.call_args[0][2]
+        assert config.runs == 5
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_concurrency_flag_applied(self, mock_load, mock_runner_cls, tmp_path):
+    def test_concurrency_flag_applied(self, mock_load, mock_execute, tmp_path):
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
 
-        mock_suite = _make_mock_suite()
-        mock_load.return_value = mock_suite
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_load.return_value = _make_mock_suite()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(main, ["run", str(eval_file), "--concurrency", "4"])
         assert result.exit_code == 0
-        assert mock_suite.defaults.concurrency == 4
+        config = mock_execute.call_args[0][2]
+        assert config.concurrency == 4
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_output_as_file_path(self, mock_load, mock_runner_cls, tmp_path):
+    def test_output_as_file_path(self, mock_load, mock_execute, tmp_path):
         """--output with .json extension is treated as file path directly."""
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
@@ -155,9 +148,7 @@ class TestCli:
 
         mock_suite = _make_mock_suite(real_values=True)
         mock_load.return_value = mock_suite
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(
@@ -170,9 +161,9 @@ class TestCli:
         assert data["suite"] == "test"
         assert "JSON report written" in result.output
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_format_flag_junit(self, mock_load, mock_runner_cls, tmp_path):
+    def test_format_flag_junit(self, mock_load, mock_execute, tmp_path):
         """--format junit produces XML file."""
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
@@ -180,9 +171,7 @@ class TestCli:
 
         mock_suite = _make_mock_suite(real_values=True)
         mock_load.return_value = mock_suite
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(
@@ -194,9 +183,9 @@ class TestCli:
         assert parsed.getroot().tag == "testsuites"
         assert "JUnit report written" in result.output
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_format_inferred_from_extension(self, mock_load, mock_runner_cls, tmp_path):
+    def test_format_inferred_from_extension(self, mock_load, mock_execute, tmp_path):
         """--output with .xml extension triggers junit format."""
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
@@ -204,9 +193,7 @@ class TestCli:
 
         mock_suite = _make_mock_suite(real_values=True)
         mock_load.return_value = mock_suite
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(
@@ -217,9 +204,9 @@ class TestCli:
         parsed = ET.parse(output_file)
         assert parsed.getroot().tag == "testsuites"
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_filter_flag(self, mock_load, mock_runner_cls, tmp_path):
+    def test_filter_flag(self, mock_load, mock_execute, tmp_path):
         """--filter only runs matching tests."""
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
@@ -247,9 +234,7 @@ class TestCli:
             ),
         ]
         mock_load.return_value = mock_suite
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(main, ["run", str(eval_file), "--filter", "greeting"])
@@ -287,37 +272,33 @@ class TestCli:
         assert result.exit_code == 1
         assert "no tests match" in result.output
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_model_override(self, mock_load, mock_runner_cls, tmp_path):
+    def test_model_override(self, mock_load, mock_execute, tmp_path):
         """--model overrides suite default model."""
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
 
-        mock_suite = _make_mock_suite()
-        mock_load.return_value = mock_suite
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_load.return_value = _make_mock_suite()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(
             main, ["run", str(eval_file), "--model", "claude-opus-4"]
         )
         assert result.exit_code == 0
-        assert mock_suite.defaults.model == "claude-opus-4"
+        config = mock_execute.call_args[0][2]
+        assert config.model == "claude-opus-4"
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_verbose_flag(self, mock_load, mock_runner_cls, tmp_path):
+    def test_verbose_flag(self, mock_load, mock_execute, tmp_path):
         """--verbose is passed to ConsoleReporter."""
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
 
         mock_load.return_value = _make_mock_suite()
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         with patch("skill_evaluator.cli.ConsoleReporter") as mock_reporter_cls:
@@ -326,17 +307,15 @@ class TestCli:
             assert result.exit_code == 0
             mock_reporter_cls.assert_called_once_with(verbose=True)
 
-    @patch("skill_evaluator.cli.SuiteRunner")
+    @patch("skill_evaluator.cli.execute_suite")
     @patch("skill_evaluator.cli.load_eval_suite")
-    def test_log_level_flag(self, mock_load, mock_runner_cls, tmp_path):
+    def test_log_level_flag(self, mock_load, mock_execute, tmp_path):
         """--log-level is accepted without error."""
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text("placeholder")
 
         mock_load.return_value = _make_mock_suite()
-        mock_runner = MagicMock()
-        mock_runner_cls.return_value = mock_runner
-        mock_runner.run.return_value = _make_passing_suite_result()
+        mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
         result = runner.invoke(main, ["run", str(eval_file), "--log-level", "DEBUG"])

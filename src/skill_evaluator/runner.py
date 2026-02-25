@@ -23,6 +23,12 @@ from skill_evaluator.config.schema import (
 from skill_evaluator.engine.context import ContextFileError, build_context_messages
 from skill_evaluator.engine.conversation import build_skill_messages
 from skill_evaluator.engine.multi_turn import MultiTurnExecutor
+from skill_evaluator.engine.prefix import (
+    MINIMUM_CACHE_TOKEN_THRESHOLD,
+    PrefixLoadError,
+    estimate_prefix_tokens,
+    load_prefix_messages,
+)
 from skill_evaluator.engine.single_turn import SingleTurnExecutor
 from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 from skill_evaluator.skill.parser import parse_skill
@@ -52,18 +58,39 @@ class SuiteRunner:
     ) -> None:
         self.eval_file = Path(eval_file)
         self.suite = suite
-        self.client = client or Anthropic(max_retries=suite.defaults.max_retries)
+        # Build ResolvedConfig from suite.defaults when not provided (backward compat)
+        if config is None:
+            config = ResolvedConfig(
+                system_prompt=suite.defaults.system_prompt,
+                model=suite.defaults.model,
+                judge_model=suite.defaults.judge_model,
+                max_tokens=suite.defaults.max_tokens,
+                temperature=suite.defaults.temperature,
+                runs=suite.defaults.runs,
+                pass_threshold=suite.defaults.pass_threshold,
+                max_retries=suite.defaults.max_retries,
+                concurrency=suite.defaults.concurrency,
+                enable_caching=suite.defaults.enable_caching,
+            )
         self.config = config
+        self.client = client or Anthropic(max_retries=self.config.max_retries)
 
     def _effective_runs(self, test: SingleTurnTest | MultiTurnTest) -> int:
-        return test.runs if test.runs is not None else self.suite.defaults.runs
+        return test.runs if test.runs is not None else self.config.runs
 
     def _effective_threshold(self, test: SingleTurnTest | MultiTurnTest) -> float:
         return (
             test.pass_threshold
             if test.pass_threshold is not None
-            else self.suite.defaults.pass_threshold
+            else self.config.pass_threshold
         )
+
+    def _build_system_prompt(self) -> str | list[dict]:
+        """Build the system prompt, optionally as structured content with cache_control."""
+        prompt = self.config.system_prompt
+        if self.config.enable_caching and prompt:
+            return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
+        return prompt
 
     def run(self) -> SuiteResult:
         """Run all tests and return results."""
@@ -73,6 +100,26 @@ class SuiteRunner:
         skill_body = skill.body
 
         suite_tools = resolve_tools(self.suite.tools)
+
+        # Load conversation prefix (once, shared across all tests)
+        self._prefix_messages: list[MessageConfig] = []
+        if self.suite.conversation_prefix is not None:
+            try:
+                self._prefix_messages = load_prefix_messages(
+                    self.eval_file,
+                    self.suite.conversation_prefix,
+                    enable_caching=self.config.enable_caching,
+                )
+                token_est = estimate_prefix_tokens(self._prefix_messages)
+                if token_est < MINIMUM_CACHE_TOKEN_THRESHOLD:
+                    logger.warning(
+                        "Prefix estimated at ~%d tokens, below minimum cache threshold of %d. "
+                        "Caching may not activate.",
+                        token_est, MINIMUM_CACHE_TOKEN_THRESHOLD,
+                    )
+            except PrefixLoadError as e:
+                logger.error("Failed to load conversation prefix: %s", e)
+                raise
 
         # Build work items
         work_items: list[_WorkItem] = []
@@ -91,7 +138,7 @@ class SuiteRunner:
 
         # Execute work items
         results_map: dict[tuple[int, int, bool], TestResult] = {}
-        concurrency = self.suite.defaults.concurrency
+        concurrency = self.config.concurrency
 
         if concurrency <= 1:
             for item in work_items:
@@ -183,11 +230,14 @@ class SuiteRunner:
             )
 
         skill_messages = build_skill_messages(skill_body) if skill_body else []
-        merged_messages = skill_messages + context_messages + list(test.input.messages)
+        prefix_messages = list(self._prefix_messages)
+        merged_messages = (
+            skill_messages + prefix_messages + context_messages + list(test.input.messages)
+        )
         input_config = InputConfig(messages=merged_messages)
 
-        system_prompt = self.suite.defaults.system_prompt
-        executor = SingleTurnExecutor(self.client, self.suite.defaults)
+        system_prompt = self._build_system_prompt()
+        executor = SingleTurnExecutor(self.client, self.config)
         try:
             trace = executor.execute(
                 system_prompt, input_config, tools=suite_tools or None
@@ -209,7 +259,7 @@ class SuiteRunner:
         assertion_results = evaluate_assertions(
             test.assertions, trace,
             client=self.client,
-            judge_model=self.suite.defaults.judge_model or self.suite.defaults.model,
+            judge_model=self.config.judge_model or self.config.model,
         )
         return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)
 
@@ -237,13 +287,16 @@ class SuiteRunner:
             )
 
         skill_messages = build_skill_messages(skill_body) if skill_body else []
-        merged_messages = skill_messages + context_messages + list(test.input.messages)
+        prefix_messages = list(self._prefix_messages)
+        merged_messages = (
+            skill_messages + prefix_messages + context_messages + list(test.input.messages)
+        )
         input_config = InputConfig(messages=merged_messages)
 
-        system_prompt = self.suite.defaults.system_prompt
+        system_prompt = self._build_system_prompt()
         executor = MultiTurnExecutor(
             client=self.client,
-            defaults=self.suite.defaults,
+            config=self.config,
             tools=suite_tools or None,
             tool_responses=test.tool_responses,
             max_turns=test.max_turns,
@@ -268,6 +321,6 @@ class SuiteRunner:
         assertion_results = evaluate_assertions(
             test.assertions, trace,
             client=self.client,
-            judge_model=self.suite.defaults.judge_model or self.suite.defaults.model,
+            judge_model=self.config.judge_model or self.config.model,
         )
         return TestResult(test_name=test.name, assertion_results=assertion_results, trace=trace)

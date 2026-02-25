@@ -74,6 +74,7 @@ def resolve_config(
         pass_threshold=suite_defaults.pass_threshold,
         max_retries=suite_defaults.max_retries,
         concurrency=cli_concurrency if cli_concurrency is not None else suite_defaults.concurrency,
+        enable_caching=suite_defaults.enable_caching,
         output=output,
         output_format=cli_output_format or "json",
         verbose=cli_verbose,

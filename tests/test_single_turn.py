@@ -3,7 +3,7 @@
 
 import pytest
 
-from skill_evaluator.config.schema import InputConfig, MessageConfig, SuiteDefaults
+from skill_evaluator.config.schema import InputConfig, MessageConfig, ResolvedConfig
 from skill_evaluator.engine.single_turn import ExecutionError, SingleTurnExecutor
 
 
@@ -12,7 +12,7 @@ class TestSingleTurnExecutor:
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
             text="Hello there!"
         )
-        executor = SingleTurnExecutor(mock_anthropic_client, SuiteDefaults())
+        executor = SingleTurnExecutor(mock_anthropic_client, ResolvedConfig())
         input_config = InputConfig(
             messages=[MessageConfig(role="user", content="Hi")]
         )
@@ -30,7 +30,7 @@ class TestSingleTurnExecutor:
             tool_uses=[{"id": "tc_001", "name": "Write", "input": {"file_path": "/x"}}],
             stop_reason="tool_use",
         )
-        executor = SingleTurnExecutor(mock_anthropic_client, SuiteDefaults())
+        executor = SingleTurnExecutor(mock_anthropic_client, ResolvedConfig())
         input_config = InputConfig(
             messages=[MessageConfig(role="user", content="Create a file")]
         )
@@ -42,8 +42,8 @@ class TestSingleTurnExecutor:
 
     def test_execute_passes_model_params(self, mock_anthropic_client, mock_anthropic_message):
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message()
-        defaults = SuiteDefaults(model="claude-haiku-4-5-20251001", max_tokens=1024, temperature=0.5)
-        executor = SingleTurnExecutor(mock_anthropic_client, defaults)
+        config = ResolvedConfig(model="claude-haiku-4-5-20251001", max_tokens=1024, temperature=0.5)
+        executor = SingleTurnExecutor(mock_anthropic_client, config)
         input_config = InputConfig(
             messages=[MessageConfig(role="user", content="Hi")]
         )
@@ -57,7 +57,7 @@ class TestSingleTurnExecutor:
 
     def test_api_error_raises_execution_error(self, mock_anthropic_client):
         mock_anthropic_client.messages.create.side_effect = Exception("API timeout")
-        executor = SingleTurnExecutor(mock_anthropic_client, SuiteDefaults())
+        executor = SingleTurnExecutor(mock_anthropic_client, ResolvedConfig())
         input_config = InputConfig(
             messages=[MessageConfig(role="user", content="Hi")]
         )

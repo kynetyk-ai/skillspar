@@ -1,6 +1,6 @@
 """Tests for engine/trace.py — Trace property aggregation."""
 
-from skill_evaluator.engine.trace import ToolCall, Trace, Turn
+from skill_evaluator.engine.trace import TokenUsage, ToolCall, Trace, Turn
 
 
 class TestTrace:
@@ -57,3 +57,103 @@ class TestTrace:
         total = trace.total_usage
         assert total.input_tokens == 200
         assert total.output_tokens == 100
+
+
+class TestTokenUsageToDict:
+    def test_basic_fields_only(self):
+        usage = TokenUsage(input_tokens=100, output_tokens=50)
+        d = usage.to_dict()
+        assert d == {"input_tokens": 100, "output_tokens": 50}
+        assert "cache_creation_input_tokens" not in d
+        assert "cache_read_input_tokens" not in d
+
+    def test_with_cache_creation(self):
+        usage = TokenUsage(
+            input_tokens=100, output_tokens=50,
+            cache_creation_input_tokens=200,
+        )
+        d = usage.to_dict()
+        assert d["cache_creation_input_tokens"] == 200
+        assert "cache_read_input_tokens" not in d
+
+    def test_with_cache_read(self):
+        usage = TokenUsage(
+            input_tokens=100, output_tokens=50,
+            cache_read_input_tokens=300,
+        )
+        d = usage.to_dict()
+        assert d["cache_read_input_tokens"] == 300
+        assert "cache_creation_input_tokens" not in d
+
+    def test_with_both_cache_fields(self):
+        usage = TokenUsage(
+            input_tokens=100, output_tokens=50,
+            cache_creation_input_tokens=200,
+            cache_read_input_tokens=300,
+        )
+        d = usage.to_dict()
+        assert d == {
+            "input_tokens": 100,
+            "output_tokens": 50,
+            "cache_creation_input_tokens": 200,
+            "cache_read_input_tokens": 300,
+        }
+
+
+class TestTraceCacheTokenAggregation:
+    def test_no_cache_tokens_returns_none(self):
+        usage = TokenUsage(input_tokens=100, output_tokens=50)
+        trace = Trace()
+        trace.add_turn(Turn(
+            text_output="a", tool_calls=[], stop_reason="end_turn",
+            usage=usage, raw_response=None,
+        ))
+        trace.add_turn(Turn(
+            text_output="b", tool_calls=[], stop_reason="end_turn",
+            usage=usage, raw_response=None,
+        ))
+        total = trace.total_usage
+        assert total.cache_creation_input_tokens is None
+        assert total.cache_read_input_tokens is None
+
+    def test_cache_tokens_summed(self):
+        usage1 = TokenUsage(
+            input_tokens=100, output_tokens=50,
+            cache_creation_input_tokens=200, cache_read_input_tokens=0,
+        )
+        usage2 = TokenUsage(
+            input_tokens=100, output_tokens=50,
+            cache_creation_input_tokens=0, cache_read_input_tokens=400,
+        )
+        trace = Trace()
+        trace.add_turn(Turn(
+            text_output="a", tool_calls=[], stop_reason="end_turn",
+            usage=usage1, raw_response=None,
+        ))
+        trace.add_turn(Turn(
+            text_output="b", tool_calls=[], stop_reason="end_turn",
+            usage=usage2, raw_response=None,
+        ))
+        total = trace.total_usage
+        assert total.cache_creation_input_tokens == 200
+        assert total.cache_read_input_tokens == 400
+
+    def test_mixed_none_and_values(self):
+        """When some turns have cache tokens and some don't, sum the non-None values."""
+        usage_with = TokenUsage(
+            input_tokens=100, output_tokens=50,
+            cache_creation_input_tokens=150,
+        )
+        usage_without = TokenUsage(input_tokens=100, output_tokens=50)
+        trace = Trace()
+        trace.add_turn(Turn(
+            text_output="a", tool_calls=[], stop_reason="end_turn",
+            usage=usage_with, raw_response=None,
+        ))
+        trace.add_turn(Turn(
+            text_output="b", tool_calls=[], stop_reason="end_turn",
+            usage=usage_without, raw_response=None,
+        ))
+        total = trace.total_usage
+        assert total.cache_creation_input_tokens == 150
+        assert total.cache_read_input_tokens is None

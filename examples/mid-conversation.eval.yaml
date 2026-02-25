@@ -1,0 +1,86 @@
+# Mid-conversation skill testing: tests whether a skill still steers
+# behavior after context dilution from a prior conversation.
+
+suite: "mid-conversation skill retention"
+skill: "./sample-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0
+  enable_caching: true
+
+conversation_prefix:
+  messages:
+    # Simulated prior coding session — 3 user/assistant exchanges
+    - role: user
+      content: "Can you help me refactor this Python function to use list comprehension?"
+    - role: assistant
+      content: >
+        Sure! List comprehensions are a concise way to create lists. Instead of
+        using a for-loop with append, you can write the expression inline.
+        Could you share the function you'd like to refactor?
+    - role: user
+      content: |
+        Here it is:
+        def get_even_numbers(nums):
+            result = []
+            for n in nums:
+                if n % 2 == 0:
+                    result.append(n)
+            return result
+    - role: assistant
+      content: |
+        Here's the refactored version using a list comprehension:
+
+        ```python
+        def get_even_numbers(nums):
+            return [n for n in nums if n % 2 == 0]
+        ```
+
+        This is more Pythonic and easier to read for simple filtering operations.
+    - role: user
+      content: "Great, that looks clean. Now can you also add type hints?"
+    - role: assistant
+      content: |
+        Of course! Here's the version with type hints:
+
+        ```python
+        def get_even_numbers(nums: list[int]) -> list[int]:
+            return [n for n in nums if n % 2 == 0]
+        ```
+
+        The `list[int]` annotations make it clear what types the function expects
+        and returns.
+
+tests:
+  # Test 1: Does the skill still steer greeting behavior mid-conversation?
+  - name: "skill activates after prior context"
+    type: single_turn
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Hey, I'm Bob!"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+      - type: output_contains
+        value: "Bob"
+
+  # Test 2: Quality check — is the response still high quality?
+  - name: "response quality after dilution"
+    type: single_turn
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Hello there, how are you?"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+      - type: llm_judge
+        criteria: >
+          Does the response follow the greeting skill's personality and format?
+          The response should be warm, use the greeting style from the skill,
+          and not be confused by the prior coding conversation.

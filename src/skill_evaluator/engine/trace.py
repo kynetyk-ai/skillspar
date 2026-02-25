@@ -24,10 +24,15 @@ class TokenUsage:
     cache_read_input_tokens: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d: dict[str, Any] = {
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
         }
+        if self.cache_creation_input_tokens is not None:
+            d["cache_creation_input_tokens"] = self.cache_creation_input_tokens
+        if self.cache_read_input_tokens is not None:
+            d["cache_read_input_tokens"] = self.cache_read_input_tokens
+        return d
 
 
 @dataclass(frozen=True)
@@ -76,7 +81,28 @@ class Trace:
     def total_usage(self) -> TokenUsage:
         input_tokens = sum(t.usage.input_tokens for t in self.turns)
         output_tokens = sum(t.usage.output_tokens for t in self.turns)
-        return TokenUsage(input_tokens=input_tokens, output_tokens=output_tokens)
+
+        # Sum cache tokens; return None when all turns have None
+        cache_creation_values = [
+            t.usage.cache_creation_input_tokens
+            for t in self.turns
+            if t.usage.cache_creation_input_tokens is not None
+        ]
+        cache_creation = sum(cache_creation_values) if cache_creation_values else None
+
+        cache_read_values = [
+            t.usage.cache_read_input_tokens
+            for t in self.turns
+            if t.usage.cache_read_input_tokens is not None
+        ]
+        cache_read = sum(cache_read_values) if cache_read_values else None
+
+        return TokenUsage(
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_creation_input_tokens=cache_creation,
+            cache_read_input_tokens=cache_read,
+        )
 
     @property
     def turn_count(self) -> int:

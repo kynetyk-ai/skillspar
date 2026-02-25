@@ -5,7 +5,7 @@ import pytest
 from skill_evaluator.config.schema import (
     InputConfig,
     MessageConfig,
-    SuiteDefaults,
+    ResolvedConfig,
     ToolMatchConfig,
     ToolResponseConfig,
 )
@@ -17,8 +17,8 @@ def _input(text: str = "Do something") -> InputConfig:
     return InputConfig(messages=[MessageConfig(role="user", content=text)])
 
 
-def _defaults() -> SuiteDefaults:
-    return SuiteDefaults(model="test-model", max_tokens=1024, temperature=0)
+def _config() -> ResolvedConfig:
+    return ResolvedConfig(model="test-model", max_tokens=1024, temperature=0)
 
 
 class TestMultiTurnExecutor:
@@ -29,7 +29,7 @@ class TestMultiTurnExecutor:
         )
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
         )
         trace = executor.execute("You are helpful.", _input())
         assert trace.turn_count == 1
@@ -54,7 +54,7 @@ class TestMultiTurnExecutor:
         ]
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
             tool_responses=tool_responses,
         )
         trace = executor.execute("You are helpful.", _input())
@@ -78,7 +78,7 @@ class TestMultiTurnExecutor:
         ]
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
             tool_responses=tool_responses,
             max_turns=3,
         )
@@ -106,7 +106,7 @@ class TestMultiTurnExecutor:
         ]
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
             tool_responses=tool_responses,
         )
         with pytest.raises(NoMatchError, match="Bash"):
@@ -127,7 +127,7 @@ class TestMultiTurnExecutor:
         ]
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
             tool_responses=tool_responses,
         )
         trace = executor.execute("You are helpful.", _input())
@@ -140,7 +140,7 @@ class TestMultiTurnExecutor:
 
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
         )
         with pytest.raises(MultiTurnExecutionError, match="timeout"):
             executor.execute("You are helpful.", _input())
@@ -153,7 +153,7 @@ class TestMultiTurnExecutor:
         tools = [{"name": "Read", "description": "Read a file", "input_schema": {}}]
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
             tools=tools,
         )
         executor.execute("prompt", _input())
@@ -176,7 +176,7 @@ class TestMultiTurnExecutor:
         ]
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
             tool_responses=tool_responses,
         )
         executor.execute("prompt", _input())
@@ -228,7 +228,7 @@ class TestMultiTurnExecutor:
         ]
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
-            defaults=_defaults(),
+            config=_config(),
             tool_responses=tool_responses,
         )
         trace = executor.execute("You are helpful.", _input())

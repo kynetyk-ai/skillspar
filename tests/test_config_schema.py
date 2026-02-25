@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from skill_evaluator.config.schema import (
     AssertionConfig,
     ContextFileConfig,
+    ConversationPrefixConfig,
     EvalSuite,
     MessageConfig,
     MultiTurnTest,
@@ -398,6 +399,7 @@ class TestResolvedConfig:
         assert config.pass_threshold == 1.0
         assert config.max_retries == 2
         assert config.concurrency == 1
+        assert config.enable_caching is True
         assert config.output is None
         assert config.output_format == "json"
         assert config.verbose is False
@@ -425,3 +427,127 @@ class TestResolvedConfig:
         assert config.output_format == "junit"
         assert config.verbose is True
         assert config.filter_pattern == "test_*"
+
+
+class TestCacheControlField:
+    def test_message_without_cache_control(self):
+        m = MessageConfig(role="user", content="Hello")
+        assert m.cache_control is None
+
+    def test_message_with_cache_control(self):
+        m = MessageConfig(role="user", content="Hello", cache_control={"type": "ephemeral"})
+        assert m.cache_control == {"type": "ephemeral"}
+
+
+class TestEnableCaching:
+    def test_suite_defaults_caching_on_by_default(self):
+        d = SuiteDefaults()
+        assert d.enable_caching is True
+
+    def test_suite_defaults_caching_disabled(self):
+        d = SuiteDefaults(enable_caching=False)
+        assert d.enable_caching is False
+
+    def test_resolved_config_caching_on_by_default(self):
+        c = ResolvedConfig()
+        assert c.enable_caching is True
+
+    def test_resolved_config_caching_disabled(self):
+        c = ResolvedConfig(enable_caching=False)
+        assert c.enable_caching is False
+
+    def test_enable_caching_parsed_from_yaml(self):
+        raw = {
+            "suite": "test",
+            "skill": "./SKILL.md",
+            "defaults": {"enable_caching": False},
+            "tests": [
+                {
+                    "type": "single_turn",
+                    "name": "basic",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ],
+        }
+        suite = EvalSuite.model_validate(raw)
+        assert suite.defaults.enable_caching is False
+
+
+class TestConversationPrefixConfig:
+    def test_inline_messages_valid(self):
+        prefix = ConversationPrefixConfig(
+            messages=[
+                MessageConfig(role="user", content="Hi"),
+                MessageConfig(role="assistant", content="Hello!"),
+            ]
+        )
+        assert len(prefix.messages) == 2
+
+    def test_file_reference_valid(self):
+        prefix = ConversationPrefixConfig(file="./prefix.yaml")
+        assert prefix.file == "./prefix.yaml"
+        assert prefix.messages is None
+
+    def test_both_provided_rejected(self):
+        with pytest.raises(ValidationError, match="not both"):
+            ConversationPrefixConfig(
+                messages=[
+                    MessageConfig(role="user", content="Hi"),
+                    MessageConfig(role="assistant", content="Hello!"),
+                ],
+                file="./prefix.yaml",
+            )
+
+    def test_neither_provided_rejected(self):
+        with pytest.raises(ValidationError, match="required"):
+            ConversationPrefixConfig()
+
+    def test_empty_messages_rejected(self):
+        with pytest.raises(ValidationError, match="must not be empty"):
+            ConversationPrefixConfig(messages=[])
+
+    def test_must_end_with_assistant(self):
+        with pytest.raises(ValidationError, match="must end with an assistant"):
+            ConversationPrefixConfig(
+                messages=[MessageConfig(role="user", content="Hi")]
+            )
+
+    def test_conversation_prefix_in_suite(self):
+        raw = {
+            "suite": "test",
+            "skill": "./SKILL.md",
+            "conversation_prefix": {
+                "messages": [
+                    {"role": "user", "content": "Hi"},
+                    {"role": "assistant", "content": "Hello!"},
+                ]
+            },
+            "tests": [
+                {
+                    "type": "single_turn",
+                    "name": "basic",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ],
+        }
+        suite = EvalSuite.model_validate(raw)
+        assert suite.conversation_prefix is not None
+        assert len(suite.conversation_prefix.messages) == 2
+
+    def test_no_prefix_defaults_to_none(self):
+        raw = {
+            "suite": "test",
+            "skill": "./SKILL.md",
+            "tests": [
+                {
+                    "type": "single_turn",
+                    "name": "basic",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ],
+        }
+        suite = EvalSuite.model_validate(raw)
+        assert suite.conversation_prefix is None

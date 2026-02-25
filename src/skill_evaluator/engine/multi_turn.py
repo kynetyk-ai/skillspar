@@ -8,7 +8,7 @@ from typing import Any
 
 from anthropic import Anthropic
 
-from skill_evaluator.config.schema import InputConfig, SuiteDefaults, ToolResponseConfig
+from skill_evaluator.config.schema import InputConfig, ResolvedConfig, ToolResponseConfig
 from skill_evaluator.engine.conversation import build_messages
 from skill_evaluator.engine.single_turn import build_turn_from_response
 from skill_evaluator.engine.trace import Trace
@@ -27,18 +27,18 @@ class MultiTurnExecutor:
     def __init__(
         self,
         client: Anthropic,
-        defaults: SuiteDefaults,
+        config: ResolvedConfig,
         tools: list[dict[str, Any]] | None = None,
         tool_responses: list[ToolResponseConfig] | None = None,
         max_turns: int = 10,
     ) -> None:
         self.client = client
-        self.defaults = defaults
+        self.config = config
         self.tools = tools
         self.tool_responses = tool_responses or []
         self.max_turns = max_turns
 
-    def execute(self, system_prompt: str, input_config: InputConfig) -> Trace:
+    def execute(self, system_prompt: str | list[dict], input_config: InputConfig) -> Trace:
         """Run the agentic loop and return a Trace of all turns."""
         messages = build_messages(input_config.messages)
         trace = Trace()
@@ -46,18 +46,18 @@ class MultiTurnExecutor:
 
         logger.debug(
             "Multi-turn loop: model=%s, max_turns=%d, response_rules=%d",
-            self.defaults.model, self.max_turns, len(self.tool_responses),
+            self.config.model, self.max_turns, len(self.tool_responses),
         )
 
         for turn_num in range(self.max_turns):
             kwargs: dict[str, Any] = {
-                "model": self.defaults.model,
-                "max_tokens": self.defaults.max_tokens,
+                "model": self.config.model,
+                "max_tokens": self.config.max_tokens,
                 "system": system_prompt,
                 "messages": messages,
             }
-            if self.defaults.temperature is not None:
-                kwargs["temperature"] = self.defaults.temperature
+            if self.config.temperature is not None:
+                kwargs["temperature"] = self.config.temperature
             if self.tools:
                 kwargs["tools"] = self.tools
 

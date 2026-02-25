@@ -31,12 +31,21 @@ def build_messages(messages: list[MessageConfig]) -> list[dict]:
 
     for msg in messages:
         if msg.role == "user":
-            api_messages.append({"role": "user", "content": msg.content or ""})
+            if msg.cache_control:
+                api_messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": msg.content or "", "cache_control": msg.cache_control}
+                    ],
+                })
+            else:
+                api_messages.append({"role": "user", "content": msg.content or ""})
 
         elif msg.role == "assistant":
             content: list[dict] = []
             if msg.content:
-                content.append({"type": "text", "text": msg.content})
+                text_block: dict = {"type": "text", "text": msg.content}
+                content.append(text_block)
             if msg.tool_calls:
                 for tc in msg.tool_calls:
                     content.append({
@@ -45,6 +54,9 @@ def build_messages(messages: list[MessageConfig]) -> list[dict]:
                         "name": tc.name,
                         "input": tc.input,
                     })
+            # Add cache_control to the last content block for assistant messages
+            if msg.cache_control and content:
+                content[-1]["cache_control"] = msg.cache_control
             api_messages.append({
                 "role": "assistant",
                 "content": content if content else (msg.content or ""),
