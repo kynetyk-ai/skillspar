@@ -6,7 +6,10 @@
   "plugins": [
     {
       "name": "skillspar",
-      "source": ".",
+      "source": {
+        "source": "github",
+        "repo": "kynetyk-ai/skillspar"
+      },
       "description": "Declarative testing harness for Agent Skills",
       "version": "0.1.0"
     }
