@@ -69,7 +69,11 @@ Use `skill_position` to control where the skill is injected relative to the pref
 Install the `/evaluate-skill` skill directly into Claude Code:
 
 ```bash
-# Development mode (from a clone of this repo)
+# Via marketplace (recommended)
+/plugin marketplace add kynetyk-ai/skillspar
+/plugin install skillspar@kynetyk-tools
+
+# Or development mode (from a clone of this repo)
 claude --plugin-dir ./path/to/skillspar
 ```
 

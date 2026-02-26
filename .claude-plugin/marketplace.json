@@ -1,0 +1,14 @@
+{
+  "name": "kynetyk-tools",
+  "owner": {
+    "name": "Kynetyk Holdings LLC"
+  },
+  "plugins": [
+    {
+      "name": "skillspar",
+      "source": ".",
+      "description": "Declarative testing harness for Claude Code Agent Skills",
+      "version": "0.1.0"
+    }
+  ]
+}

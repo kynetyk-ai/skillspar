@@ -183,6 +183,7 @@ structure — no restructuring needed.
       with `pip install git+https://github.com/kynetyk-ai/skillspar.git` instructions
 - [x] Portable paths in `/evaluate-skill` SKILL.md (validate script path relative to skill dir)
 - [x] README plugin installation section (development mode via `--plugin-dir`, CLI install via GitHub)
+- [x] `marketplace.json` for self-hosted plugin marketplace
 - [x] CLAUDE.md plugin structure documentation
 
 **Milestone**: `claude --plugin-dir .` loads the plugin, `/skillspar:evaluate-skill` is
