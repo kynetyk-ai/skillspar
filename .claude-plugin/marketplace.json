@@ -7,8 +7,8 @@
     {
       "name": "skillspar",
       "source": {
-        "source": "github",
-        "repo": "kynetyk-ai/skillspar"
+        "source": "url",
+        "url": "https://github.com/kynetyk-ai/skillspar.git"
       },
       "description": "Declarative testing harness for Agent Skills",
       "version": "0.1.0"
