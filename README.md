@@ -36,13 +36,11 @@ pip install git+https://github.com/kynetyk-ai/skillspar.git
 For development mode (from a clone of this repo):
 
 ```bash
-cd skillspar
-
-# Load the plugin into Claude Code (provides /skillspar:evaluate)
-claude --plugin-dir .
-
 # Install the CLI in editable mode (provides skillspar run, watch, snapshot)
-pip install -e ".[dev]"
+pip install -e "~/path/to/skillspar[dev]"
+
+# Load the plugin into Claude Code from your skill project
+claude --plugin-dir ~/path/to/skillspar
 ```
 
 ## Quick Start
