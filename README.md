@@ -76,7 +76,7 @@ skillspar run my-skill.eval.yaml
 
 ## Examples
 
-The `examples/` directory contains numbered eval suites (`01` through `08`) that progressively demonstrate every feature of the framework — from basic output assertions through multi-turn tool loops, conversation prefixes, reliability runs, and advanced features like `system_prompt` and custom tools. They use a toy greeting skill to keep the focus on framework mechanics, not skill complexity. See the [Examples Guide](docs/examples.md) for what each file demonstrates and expected outcomes.
+The `examples/` directory contains numbered eval suites (`01` through `08`) that progressively demonstrate features of the framework — from basic output assertions through multi-turn tool loops, conversation prefixes, reliability runs, and advanced features like `system_prompt` and custom tools. They use a toy greeting skill to keep the focus on framework mechanics, not skill complexity. See the [Examples Guide](docs/examples.md) for what each file demonstrates and expected outcomes.
 
 ```bash
 # Run a single example
