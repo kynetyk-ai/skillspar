@@ -72,12 +72,25 @@ This skill produces `.eval.yaml` test suites for the Skillspar framework. Given 
 - Consider adding a `conversation_prefix` when the skill is likely to be used mid-conversation (most skills are). A prefix simulates prior context to test whether the skill's steer persists after context dilution.
 - **Make prefix content completely unrelated to the skill.** If the prefix is topically related, it injects helpful context that steers the model in the right direction regardless of the skill — you're no longer measuring dilution. Use something with zero topical overlap: a passage from an open-source novel, a discussion about an unrelated domain, anything that couldn't accidentally help. The point is to fill the context window with noise, not signal.
 
-## Expect iteration
+## Testing Seemingly Untestable Claims
+
+Before marking a claim as untestable, consider these patterns:
+
+- **Simulating tool unavailability.** Omit tools from the test definition entirely. If a skill says "fall back to X when tool Y isn't available," a test with no tools defined *is* the unavailability scenario. The model sees no tools and should produce the fallback behavior.
+- **Absence constraints.** Claims like "no external dependencies" or "don't use X" map directly to `output_not_contains`. Check for CDN URLs, forbidden patterns, or specific strings that shouldn't appear.
+- **Proportional/subjective claims.** "Used sparingly," "only when appropriate," and similar claims are subjective — use `llm_judge`. The fact that a claim can't be checked deterministically doesn't make it untestable; it makes it a judgment call, which is exactly what `llm_judge` is for.
+- **Structural claims about generated code/markup.** Combine `output_matches_regex` for structural scaffolding (path patterns, nesting) with `llm_judge` for semantic correctness. You don't need a real filesystem or parser — you're checking the model's *output text*.
+
+A claim is only truly untestable if it requires observing side effects outside the model's text output and tool calls (e.g., "the generated file compiles successfully"). Even then, consider whether a proxy assertion captures the intent.
+
+## Expect Iteration
 
 **Tell the user that the first run is exploratory.** Generated suites are a strong starting point, but initial runs typically surface 2–3 assertions that need adjustment — this is normal and expected, not a failure of the generation process. Test failures come from two distinct sources:
 
-1. **The skill doesn't steer well enough** — the model ignores or partially follows the skill. This is a real finding about the skill's quality.
-2. **The test doesn't match reality** — the assertion is too strict, too vague, or tests the wrong thing. Common patterns: `turn_count exactly: 1` on a task that takes two turns (tool call + confirmation), `llm_judge` criteria that reference context the judge can't see (it doesn't see the skill definition or prefix), regex patterns too narrow for valid output variations, and `conversation_prefix` tests with ambiguous inputs the model interprets as continuing the prefix conversation.
+1. **The skill doesn't steer well enough** — the model ignores or partially follows the skill. This is a real finding about the skill's quality. **Do not weaken the test to make it pass.**
+2. **The test has a design artifact** — the assertion is logically flawed, tests the wrong thing, or creates an artificial failure unrelated to the skill's actual behavior. Common patterns: `turn_count exactly: 1` on a task that naturally takes two turns, `llm_judge` criteria that reference context the judge can't see, regex too narrow for valid output variations, and `conversation_prefix` tests with inputs the model interprets as continuing the prefix.
+
+The goal of iteration is to **fix design artifacts in category 2** — logical fallacies and test mechanics that cause artificial failures. It is explicitly NOT to adjust tests until they pass. If a test fails because the skill genuinely doesn't steer the model, that failure is the finding. Loosening assertions to hide a real steer gap defeats the purpose of evaluation.
 
 After the first run, help the user distinguish skill problems from test problems and adjust accordingly. A suite that stabilizes after 2–3 iterations and reliably separates skill from baseline is the goal.
 
