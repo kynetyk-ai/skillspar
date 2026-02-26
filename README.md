@@ -1,10 +1,10 @@
 # Skillspar: Quantitative Testing Harness for Agent Skills
 
-Define test scenarios in YAML, run them against the API, and measure how well your skill steers behavior — across edits, models, and context conditions.
+Define test scenarios in YAML, run them against the API, and measure how well your skill "steers" behavior — across edits, models, and context conditions.
 
 ## Why Test Skills?
 
-Agent skills are prompt documents that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar currently models steer on tool-using Anthropic models using the Anthropic API. The approach could extend to other agents with similar skill injection patterns.
+Agent skills are prompt documents that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar currently evaluates steer on tool-using Anthropic models using API calls. The approach could extend to other agents with similar skill injection patterns.
 
 ## How It Works
 
