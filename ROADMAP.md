@@ -234,9 +234,10 @@ PyPI distribution, community files, and public release readiness.
 
 ### Community files
 - [ ] `CHANGELOG.md`
-- [ ] `CONTRIBUTING.md`
+- [ ] `CONTRIBUTING.md` (dev setup, testing, PR workflow, code style expectations)
 - [ ] `CODE_OF_CONDUCT.md` (Contributor Covenant)
 - [ ] `SECURITY.md` (vulnerability reporting policy)
+- [ ] README contributing section (link to `CONTRIBUTING.md`, community guidelines summary)
 
 **Milestone**: `pip install skillspar` works from PyPI, community files are in place, and the
 project is ready for public contributions.
