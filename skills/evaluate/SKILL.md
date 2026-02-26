@@ -85,9 +85,9 @@ A claim is only truly untestable if it requires observing side effects outside t
 
 ## Expect Iteration
 
-**Tell the user that the first run is exploratory.** Generated suites are a strong starting point, but initial runs typically surface 2–3 assertions that need adjustment — this is normal and expected, not a failure of the generation process. Test failures come from two distinct sources:
+**Tell the user that the initial runs are exploratory.** Generated suites are a strong starting point, but initial runs typically surface assertions that need adjustment — this is expected, not a failure of the generation process. Test failures come from two distinct sources:
 
-1. **The skill doesn't steer well enough** — the model ignores or partially follows the skill. This is a real finding about the skill's quality. **Do not weaken the test to make it pass.**
+1. **The skill doesn't steer well enough** — the model ignores or partially follows the skill. This is a real finding about the skill's quality. **NEVER weaken the test to make it pass.**
 2. **The test has a design artifact** — the assertion is logically flawed, tests the wrong thing, or creates an artificial failure unrelated to the skill's actual behavior. Common patterns: `turn_count exactly: 1` on a task that naturally takes two turns, `llm_judge` criteria that reference context the judge can't see, regex too narrow for valid output variations, and `conversation_prefix` tests with inputs the model interprets as continuing the prefix.
 
 The goal of iteration is to **fix design artifacts in category 2** — logical fallacies and test mechanics that cause artificial failures. It is explicitly NOT to adjust tests until they pass. If a test fails because the skill genuinely doesn't steer the model, that failure is the finding. Loosening assertions to hide a real steer gap defeats the purpose of evaluation.
