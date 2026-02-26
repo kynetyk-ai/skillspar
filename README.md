@@ -4,7 +4,7 @@ Define test scenarios in YAML, run them against the API, and measure how well yo
 
 ## Why Test Skills?
 
-Agent skills are prompt documents that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar currently evaluates steer on tool-using Anthropic models using API calls. 
+Agent skills are prompt documents and reference materials that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar currently evaluates steer on tool-using Anthropic models using API calls. 
 
 The underlying pattern — injecting instructional text into model context to specialize behavior — is shared across major coding agents including [Claude Code](https://code.claude.com/docs/en/skills), [Cursor](https://docs.cursor.com/context/rules-for-ai), and [Windsurf](https://docs.windsurf.com/windsurf/cascade/memories), and is converging into an [open standard](https://openai.github.io/agent-skills-spec/).
 
@@ -12,7 +12,7 @@ The underlying pattern — injecting instructional text into model context to sp
 
 Skillspar has two components designed to work together inside Claude Code:
 
-1. **The plugin** (`/skillspar:evaluate`) — Claude reads your SKILL.md, analyzes its behaviors, and collaborates with you to generate a structured test suite (`.eval.yaml`).
+1. **The plugin** (`/skillspar:evaluate`) — Claude reads your SKILL.md, analyzes its behaviors, and collaborates with you to generate a structured test suite (`.eval.yaml`).  This includes customizeable injection of the SKILL.md content in relation to simulated conversation context and simulated progressive discovery of reference material that inform behaviors modeled as tool call and tool result messages.
 2. **The CLI** (`skillspar run`) — Claude executes the generated suite against the Anthropic API and reports quantitative results — pass rates, baseline comparisons, and cost.
 
 The typical workflow:
