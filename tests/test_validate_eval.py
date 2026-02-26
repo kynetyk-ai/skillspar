@@ -1,4 +1,4 @@
-"""Tests for the eval YAML validation script."""
+"""Tests for the eval YAML validation script (standalone, no skill_evaluator imports)."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ _SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "evaluate-skil
 sys.path.insert(0, str(_SCRIPT_DIR))
 
 from validate_eval import (  # noqa: E402
-    _humanize_loc,
     _levenshtein,
+    _path,
     _suggest_typo,
     validate_eval_file,
 )
@@ -53,18 +53,15 @@ def _minimal_suite(**overrides) -> dict:
 # ---------------------------------------------------------------------------
 
 
-class TestHumanizeLoc:
+class TestPath:
     def test_simple_path(self):
-        assert _humanize_loc(("tests", 0, "name")) == "tests[0].name"
+        assert _path("tests", 0, "name") == "tests[0].name"
 
     def test_nested_path(self):
-        assert _humanize_loc(("tests", 2, "assertions", 1, "type")) == "tests[2].assertions[1].type"
+        assert _path("tests", 2, "assertions", 1, "type") == "tests[2].assertions[1].type"
 
     def test_top_level(self):
-        assert _humanize_loc(("suite",)) == "suite"
-
-    def test_empty(self):
-        assert _humanize_loc(()) == ""
+        assert _path("suite") == "suite"
 
 
 class TestLevenshtein:
@@ -93,7 +90,7 @@ class TestSuggestTypo:
 
 
 # ---------------------------------------------------------------------------
-# Error translation: discriminator errors
+# Schema errors: discriminator / test type
 # ---------------------------------------------------------------------------
 
 
@@ -127,7 +124,7 @@ class TestDiscriminatorErrors:
 
 
 # ---------------------------------------------------------------------------
-# Error translation: missing required fields
+# Missing required fields
 # ---------------------------------------------------------------------------
 
 
@@ -161,9 +158,46 @@ class TestMissingFields:
         assert not ok
         assert "missing" in msg.lower()
 
+    def test_missing_assertion_type(self, tmp_path):
+        raw = _minimal_suite(tests=[{
+            "type": "single_turn",
+            "name": "no assertion type",
+            "input": {"messages": [{"role": "user", "content": "Hi"}]},
+            "assertions": [{"value": "hello"}],
+        }])
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "type" in msg.lower()
+
+    def test_missing_messages_in_input(self, tmp_path):
+        raw = _minimal_suite(tests=[{
+            "type": "single_turn",
+            "name": "no messages",
+            "input": {},
+            "assertions": [],
+        }])
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "messages" in msg.lower()
+
+    def test_missing_assertion_required_field(self, tmp_path):
+        """output_contains requires a 'value' field."""
+        raw = _minimal_suite(tests=[{
+            "type": "single_turn",
+            "name": "missing value",
+            "input": {"messages": [{"role": "user", "content": "Hi"}]},
+            "assertions": [{"type": "output_contains"}],
+        }])
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "value" in msg.lower()
+
 
 # ---------------------------------------------------------------------------
-# Error translation: invalid values
+# Invalid values
 # ---------------------------------------------------------------------------
 
 
@@ -194,9 +228,35 @@ class TestInvalidValues:
         assert not ok
         assert "regex" in msg.lower() or "pattern" in msg.lower()
 
+    def test_invalid_message_role(self, tmp_path):
+        raw = _minimal_suite(tests=[{
+            "type": "single_turn",
+            "name": "bad role",
+            "input": {"messages": [{"role": "system", "content": "Hi"}]},
+            "assertions": [],
+        }])
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "invalid message role" in msg.lower()
+
+    def test_concurrency_zero(self, tmp_path):
+        raw = _minimal_suite(defaults={"concurrency": 0})
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "concurrency" in msg.lower()
+
+    def test_max_retries_negative(self, tmp_path):
+        raw = _minimal_suite(defaults={"max_retries": -1})
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "max_retries" in msg.lower()
+
 
 # ---------------------------------------------------------------------------
-# Error translation: tool_responses
+# Tool response errors
 # ---------------------------------------------------------------------------
 
 
@@ -218,9 +278,35 @@ class TestToolResponseErrors:
         assert not ok
         assert "not both" in msg.lower()
 
+    def test_neither_response_nor_responses(self, tmp_path):
+        raw = _minimal_suite(tests=[{
+            "type": "multi_turn",
+            "name": "neither",
+            "input": {"messages": [{"role": "user", "content": "Hi"}]},
+            "tool_responses": [{"match": "*"}],
+            "assertions": [],
+        }])
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "required" in msg.lower()
+
+    def test_empty_responses_list(self, tmp_path):
+        raw = _minimal_suite(tests=[{
+            "type": "multi_turn",
+            "name": "empty",
+            "input": {"messages": [{"role": "user", "content": "Hi"}]},
+            "tool_responses": [{"match": "*", "responses": []}],
+            "assertions": [],
+        }])
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "empty" in msg.lower()
+
 
 # ---------------------------------------------------------------------------
-# Error translation: conversation_prefix
+# Conversation prefix errors
 # ---------------------------------------------------------------------------
 
 
@@ -234,9 +320,36 @@ class TestConversationPrefixErrors:
         assert not ok
         assert "assistant" in msg.lower()
 
+    def test_both_messages_and_file(self, tmp_path):
+        raw = _minimal_suite(conversation_prefix={
+            "messages": [
+                {"role": "user", "content": "Hi"},
+                {"role": "assistant", "content": "Hello"},
+            ],
+            "file": "./prefix.yaml",
+        })
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "not both" in msg.lower()
+
+    def test_neither_messages_nor_file(self, tmp_path):
+        raw = _minimal_suite(conversation_prefix={})
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "required" in msg.lower()
+
+    def test_empty_messages(self, tmp_path):
+        raw = _minimal_suite(conversation_prefix={"messages": []})
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert not ok
+        assert "empty" in msg.lower()
+
 
 # ---------------------------------------------------------------------------
-# Semantic checks
+# Semantic checks (warnings on valid files)
 # ---------------------------------------------------------------------------
 
 
@@ -428,5 +541,25 @@ class TestEdgeCases:
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "VALIDATION FAILED" in msg
-        # Should have multiple errors
         assert "Error 1/" in msg
+
+    def test_valid_multi_turn_passes(self, tmp_path):
+        raw = _minimal_suite(
+            tools=[{"builtin": "Read"}, {"builtin": "Write"}],
+            tests=[{
+                "type": "multi_turn",
+                "name": "read then write",
+                "input": {"messages": [{"role": "user", "content": "Read and modify"}]},
+                "tool_responses": [
+                    {"match": {"tool": "Read"}, "response": {"content": "file contents"}},
+                    {"match": {"tool": "Write"}, "response": {"content": "ok"}},
+                ],
+                "assertions": [
+                    {"type": "tool_sequence", "tools": ["Read", "Write"]},
+                ],
+            }],
+        )
+        p = _write_yaml(tmp_path, raw)
+        ok, msg = validate_eval_file(p)
+        assert ok
+        assert "VALIDATION PASSED" in msg
