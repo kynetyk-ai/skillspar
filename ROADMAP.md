@@ -189,9 +189,10 @@ structure — no restructuring needed.
 **Milestone**: `claude --plugin-dir .` loads the plugin, `/skillspar:evaluate` is
 discoverable and functional. ✅
 
-## Phase 5: Release Readiness + PyPI (Future)
+## Phase 5A: Internal Launch (Future)
 
-CI/CD, packaging metadata, error handling polish, and code quality enforcement — the gate before public release.
+Full polish for team and collaborator use — CI/CD, error handling, code quality enforcement,
+and contribution workflow. Install via GitHub repo (`pip install git+...`).
 
 ### CI/CD
 - [ ] GitHub Actions workflow: `ruff check src/` + `pytest` on every push and PR
@@ -200,11 +201,6 @@ CI/CD, packaging metadata, error handling polish, and code quality enforcement �
 ### Packaging metadata (`pyproject.toml`)
 - [ ] Add `[project.urls]` (Homepage, Repository, Bug Tracker)
 - [ ] Add `[project.authors]`
-- [ ] Add `[project.classifiers]` (Development Status, License, Python versions, Topic)
-
-### Community files
-- [ ] `CHANGELOG.md`
-- [ ] `CONTRIBUTING.md`
 
 ### Error handling UX
 - [ ] Catch `SkillParseError` in CLI/runner (currently surfaces as raw traceback)
@@ -214,13 +210,35 @@ CI/CD, packaging metadata, error handling polish, and code quality enforcement �
 - [ ] Configure and enforce mypy or pyright (type annotations exist but are unenforced)
 - [ ] Expand ruff rule sets: add `I` (isort), `B` (bugbear), `UP` (pyupgrade)
 
+### Contribution workflow
+- [ ] GitHub issue templates (`.github/ISSUE_TEMPLATE/`): bug report and feature request
+- [ ] PR template (`.github/pull_request_template.md`)
+
 ### Cleanup
 - [ ] Remove or populate empty `docs/` directory
 
+**Milestone**: CI is green, error messages are user-friendly, and the team has a clean
+contribution workflow via GitHub.
+
+## Phase 5B: Open Source Launch (Future)
+
+PyPI distribution, community files, and public release readiness.
+
 ### Distribution
 - [ ] PyPI packaging and distribution (`hatch build` + `twine upload` or trusted publisher)
+- [ ] GitHub release automation: tag-triggered workflow to build and publish to PyPI
 
-**Milestone**: `pip install skillspar` works from PyPI, CI is green, contributors have a documented path.
+### Packaging metadata (`pyproject.toml`)
+- [ ] Add `[project.classifiers]` (Development Status, License, Python versions, Topic)
+
+### Community files
+- [ ] `CHANGELOG.md`
+- [ ] `CONTRIBUTING.md`
+- [ ] `CODE_OF_CONDUCT.md` (Contributor Covenant)
+- [ ] `SECURITY.md` (vulnerability reporting policy)
+
+**Milestone**: `pip install skillspar` works from PyPI, community files are in place, and the
+project is ready for public contributions.
 
 ## Phase 6: Analytics + Advanced (Future)
 
