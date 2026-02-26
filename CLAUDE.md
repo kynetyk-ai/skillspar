@@ -6,7 +6,7 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 
 ```bash
 .venv/bin/pip install -e ".[dev]"   # install/update deps
-.venv/bin/skill-eval ...            # run the CLI
+.venv/bin/skillspar ...             # run the CLI (or skill-eval)
 .venv/bin/pytest                    # run tests
 .venv/bin/ruff check src/           # lint
 ```
@@ -22,7 +22,7 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 
 - Python 3.11+, Pydantic v2 for all config schemas
 - `hatch` build backend with src layout
-- CLI built with `click`, entry point is `skill-eval`
+- CLI built with `click`, entry points are `skillspar` (primary) and `skill-eval` (alias)
 - Console output uses `rich`
 - Async where needed (`pytest-asyncio` for async tests)
 
@@ -41,14 +41,14 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
   3. `skills/evaluate-skill/SKILL.md` — if the change affects test design guidance
   4. `examples/` — ensure example suites still parse and demonstrate the current schema
 - **Feature additions**: When a phase milestone is reached, re-evaluate the README and any user-facing docs for accuracy.
-- **Skill package coherence**: The `/evaluate-skill` skill package (SKILL.md + references/) is a first-class deliverable. Treat it like code — if the framework changes, the skill must stay in sync.
+- **Skill package coherence**: The `/skillspar:evaluate-skill` skill package (SKILL.md + references/) is a first-class deliverable. Treat it like code — if the framework changes, the skill must stay in sync.
 
 ## Claude Code Plugin
 
 This repo also serves as a Claude Code plugin root:
 
 - `.claude-plugin/plugin.json` — plugin manifest
-- `skills/evaluate-skill/` — the `/evaluate-skill` skill (auto-discovered by the plugin system)
+- `skills/evaluate-skill/` — the `/skillspar:evaluate-skill` skill (auto-discovered by the plugin system)
 - `hooks/hooks.json` — `SessionStart` hook that checks for CLI installation
 
 Test the plugin locally: `claude --plugin-dir .`

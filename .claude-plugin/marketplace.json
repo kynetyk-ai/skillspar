@@ -7,7 +7,7 @@
     {
       "name": "skillspar",
       "source": ".",
-      "description": "Declarative testing harness for Claude Code Agent Skills",
+      "description": "Declarative testing harness for Agent Skills",
       "version": "0.1.0"
     }
   ]

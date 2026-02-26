@@ -1,7 +1,7 @@
 {
   "name": "skillspar",
   "version": "0.1.0",
-  "description": "Declarative testing harness for Claude Code Agent Skills — measure whether your skill actually changes model behavior",
+  "description": "Declarative testing harness for Agent Skills — measure whether your skill actually changes model behavior",
   "author": {
     "name": "Kynetyk Holdings LLC",
     "url": "https://github.com/kynetyk-ai"
