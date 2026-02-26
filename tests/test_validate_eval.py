@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 # Import from the script — adjust path so it's importable
-_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "evaluate-skill" / "scripts"
+_SCRIPT_DIR = Path(__file__).resolve().parent.parent / "skills" / "evaluate" / "scripts"
 sys.path.insert(0, str(_SCRIPT_DIR))
 
 from validate_eval import (  # noqa: E402

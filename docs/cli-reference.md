@@ -337,7 +337,7 @@ Each test shows a pass/fail indicator and, for multi-run tests, the pass rate:
 
 ## Iterative Refinement Workflow
 
-1. **Start with `/skillspar:evaluate-skill`** to generate an initial test suite from your SKILL.md.
+1. **Start with `/skillspar:evaluate`** to generate an initial test suite from your SKILL.md.
 2. **Run the suite** with `skillspar run` — identify which tests fail and why.
 3. **Tighten flaky tests**: If a test passes inconsistently, increase `runs` and set an appropriate `pass_threshold`. Use `llm_judge` instead of brittle substring assertions for subjective quality.
 4. **Add baseline**: Enable `baseline: true` on key tests to confirm your skill adds value beyond the model's default behavior.

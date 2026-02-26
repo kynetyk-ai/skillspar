@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "command -v skillspar > /dev/null 2>&1 || echo '[skillspar] The skillspar CLI is not installed. The /skillspar:evaluate-skill skill can generate .eval.yaml files, but you need the CLI to run them. Install with: pip install git+https://github.com/kynetyk-ai/skillspar.git'"
+            "command": "command -v skillspar > /dev/null 2>&1 || echo '[skillspar] The skillspar CLI is not installed. The /skillspar:evaluate skill can generate .eval.yaml files, but you need the CLI to run them. Install with: pip install git+https://github.com/kynetyk-ai/skillspar.git'"
           }
         ]
       }

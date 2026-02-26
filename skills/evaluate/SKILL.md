@@ -1,5 +1,5 @@
 ---
-name: evaluate-skill
+name: evaluate
 description: Analyze a SKILL.md and generate a .eval.yaml test suite with baseline comparison measuring the skill's marginal behavioral impact
 ---
 

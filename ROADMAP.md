@@ -55,11 +55,11 @@ Quality assertions and CI-friendly output formats.
 
 **Milestone**: `skillspar run suite.yaml --format junit --output results.xml` works in CI. ✅
 
-## Phase 4A: `/evaluate-skill` Meta-Skill ✅
+## Phase 4A: `/evaluate` Meta-Skill ✅
 
 A SKILL.md that guides Claude Code through analyzing a target skill and generating a test suite. This is the key differentiator — no other tool can read a skill definition and automatically propose what to test, with baseline enabled by default so every generated suite answers "is this skill worth the context?"
 
-- [x] `/evaluate-skill` SKILL.md with analysis protocol, inline schema reference, assertion selection rules, and baseline strategy
+- [x] `/evaluate` SKILL.md with analysis protocol, inline schema reference, assertion selection rules, and baseline strategy
 - [x] Skill structure analysis: extract behavioral claims by category (output format, content rules, tone/style, tool-use patterns, workflow sequences, constraints/boundaries)
 - [x] Assertion type guidance: `llm_judge` for subjective quality, deterministic assertions for structural behaviors. Explicit warning against using `output_contains`/`output_matches_regex` as proxies for subjective quality.
 - [x] Single-turn vs multi-turn decision rules (prefer single-turn, use multi-turn only for tool-use workflows)
@@ -67,7 +67,7 @@ A SKILL.md that guides Claude Code through analyzing a target skill and generati
 - [x] Example code review skill (`examples/code-review-skill/SKILL.md`) with both structural and subjective requirements
 - [x] Hand-validated reference eval suite (`examples/code-review-skill.eval.yaml`) — 9 tests demonstrating all assertion types with baseline
 
-**Milestone**: `/evaluate-skill my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior. ✅
+**Milestone**: `/evaluate my-skill/SKILL.md` generates a starter test suite that proves whether the skill changes model behavior. ✅
 
 ## Phase 4B: Schema Stabilization & Mid-Conversation Testing ✅
 
@@ -174,19 +174,19 @@ documentation covers the full feature set. ✅
 
 ## Phase 4G: Claude Code Plugin Packaging ✅
 
-Package the repo as a Claude Code plugin so users can install skillspar's `/evaluate-skill`
+Package the repo as a Claude Code plugin so users can install skillspar's `/evaluate`
 skill directly into their Claude Code environment. The plugin overlays onto the existing repo
 structure — no restructuring needed.
 
 - [x] `.claude-plugin/plugin.json` manifest (name, version synced with pyproject.toml, metadata)
 - [x] `hooks/hooks.json` with `SessionStart` hook: warn if `skillspar` CLI is not installed,
       with `pip install git+https://github.com/kynetyk-ai/skillspar.git` instructions
-- [x] Portable paths in `/evaluate-skill` SKILL.md (validate script path relative to skill dir)
+- [x] Portable paths in `/evaluate` SKILL.md (validate script path relative to skill dir)
 - [x] README plugin installation section (development mode via `--plugin-dir`, CLI install via GitHub)
 - [x] `marketplace.json` for self-hosted plugin marketplace
 - [x] CLAUDE.md plugin structure documentation
 
-**Milestone**: `claude --plugin-dir .` loads the plugin, `/skillspar:evaluate-skill` is
+**Milestone**: `claude --plugin-dir .` loads the plugin, `/skillspar:evaluate` is
 discoverable and functional. ✅
 
 ## Phase 5: Release Readiness + PyPI (Future)

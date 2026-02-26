@@ -10,20 +10,20 @@ Agent skills are prompt documents that specialize general-purpose agents — no 
 
 Skillspar has two components designed to work together inside Claude Code:
 
-1. **The plugin** (`/skillspar:evaluate-skill`) — Claude reads your SKILL.md, analyzes its behaviors, and collaborates with you to generate a structured test suite (`.eval.yaml`).
+1. **The plugin** (`/skillspar:evaluate`) — Claude reads your SKILL.md, analyzes its behaviors, and collaborates with you to generate a structured test suite (`.eval.yaml`).
 2. **The CLI** (`skillspar run`) — Claude executes the generated suite against the Anthropic API and reports quantitative results — pass rates, baseline comparisons, and cost.
 
 The typical workflow:
 
 1. Install the plugin and CLI (see below)
-2. Run `/skillspar:evaluate-skill` — Claude generates a `.eval.yaml` tailored to your skill
+2. Run `/skillspar:evaluate` — Claude generates a `.eval.yaml` tailored to your skill
 3. Run `skillspar run my-skill.eval.yaml` — the CLI executes the tests and reports results
 4. Iterate: refine the suite, re-run, use watch mode and snapshots to track progress
 
 ## Installation
 
 ```bash
-# 1. Install the plugin (provides /skillspar:evaluate-skill)
+# 1. Install the plugin (provides /skillspar:evaluate)
 /plugin marketplace add kynetyk-ai/skillspar
 /plugin install skillspar@kynetyk-tools
 

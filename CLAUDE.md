@@ -36,19 +36,19 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 
 ### After major changes
 - **Schema changes**: When the `.eval.yaml` input schema changes (new fields, renamed fields, structural shifts), update:
-  1. `skills/evaluate-skill/references/eval-schema-reference.md` — the schema reference the meta-skill reads
-  2. `skills/evaluate-skill/references/assertion-types-reference.md` — if assertion types changed
-  3. `skills/evaluate-skill/SKILL.md` — if the change affects test design guidance
+  1. `skills/evaluate/references/eval-schema-reference.md` — the schema reference the meta-skill reads
+  2. `skills/evaluate/references/assertion-types-reference.md` — if assertion types changed
+  3. `skills/evaluate/SKILL.md` — if the change affects test design guidance
   4. `examples/` — ensure example suites still parse and demonstrate the current schema
 - **Feature additions**: When a phase milestone is reached, re-evaluate the README and any user-facing docs for accuracy.
-- **Skill package coherence**: The `/skillspar:evaluate-skill` skill package (SKILL.md + references/) is a first-class deliverable. Treat it like code — if the framework changes, the skill must stay in sync.
+- **Skill package coherence**: The `/skillspar:evaluate` skill package (SKILL.md + references/) is a first-class deliverable. Treat it like code — if the framework changes, the skill must stay in sync.
 
 ## Claude Code Plugin
 
 This repo also serves as a Claude Code plugin root:
 
 - `.claude-plugin/plugin.json` — plugin manifest
-- `skills/evaluate-skill/` — the `/skillspar:evaluate-skill` skill (auto-discovered by the plugin system)
+- `skills/evaluate/` — the `/skillspar:evaluate` skill (auto-discovered by the plugin system)
 - `hooks/hooks.json` — `SessionStart` hook that checks for CLI installation
 
 Test the plugin locally: `claude --plugin-dir .`
