@@ -16,6 +16,7 @@ All fields are optional and have sensible defaults:
 
 ```yaml
 defaults:
+  system_prompt: ""                    # Baseline agent persona (constant across skill/baseline runs)
   model: "claude-sonnet-4-5-20250929"
   judge_model: ""                      # Model for llm_judge assertions
   max_tokens: 4096
@@ -26,6 +27,8 @@ defaults:
   concurrency: 1                       # Parallel test execution
   enable_caching: true                 # Prompt caching for prefix/system prompt
 ```
+
+The `system_prompt` is sent as the API system message on every run (both skill and baseline). Use it to establish a persona or behavioral constraints that the skill builds on top of, rather than for content that should only appear in skill runs.
 
 ## Conversation Prefix
 

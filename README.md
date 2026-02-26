@@ -71,6 +71,18 @@ Run it:
 skillspar run my-skill.eval.yaml
 ```
 
+## Examples
+
+The `examples/` directory contains numbered eval suites (`01` through `08`) that progressively demonstrate every feature of the framework — from basic output assertions through multi-turn tool loops, conversation prefixes, reliability runs, and advanced features like `system_prompt` and custom tools. They use a toy greeting skill to keep the focus on framework mechanics, not skill complexity. See the [Examples Guide](docs/examples.md) for what each file demonstrates and expected outcomes.
+
+```bash
+# Run a single example
+skillspar run examples/01-basics.eval.yaml --verbose
+
+# Run all examples
+skillspar run examples/ --verbose
+```
+
 ## Key Capabilities
 
 - **Repeated runs** — run each test multiple times with `runs` and `pass_threshold` to measure consistency and build statistical confidence. See [Repeated Runs](docs/cli-reference.md#repeated-runs--reliability).
@@ -87,7 +99,7 @@ skillspar run my-skill.eval.yaml
 
 - **LLM judge** — use a separate model call to evaluate subjective quality via `llm_judge` assertions, with configurable `criteria` and optional `judge_model`. See [Assertion Types](docs/cli-reference.md#assertion-types).
 
-For the full YAML schema, all CLI options, assertion types, mock tool builtins, and configuration defaults, see the [CLI Reference](docs/cli-reference.md).
+For the full YAML schema, all CLI options, assertion types, mock tool builtins, and configuration defaults, see the [CLI Reference](docs/cli-reference.md). For setup instructions, best practices, and design rationale, see the [User Guide](docs/user-guide.md).
 
 ## Development
 
@@ -105,3 +117,5 @@ See [ROADMAP.md](ROADMAP.md) for the phased implementation plan.
 ## License
 
 [MIT](LICENSE)
+
+Skillspar is maintained by [Kynetyk Holdings LLC](https://github.com/kynetyk-ai). For commercial licensing inquiries, contact hello@kynetyk.ai.

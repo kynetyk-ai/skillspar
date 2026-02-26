@@ -1,16 +1,17 @@
-# LLM judge eval suite demonstrating quality assertions.
-# Uses a second API call to evaluate response quality against criteria.
+# 02 — LLM judge assertions with a dedicated judge model.
+# Demonstrates: llm_judge with criteria, defaults.judge_model,
+# combining deterministic and judge assertions.
 
 suite: "greeting skill quality"
 skill: "./sample-skill/SKILL.md"
 
 defaults:
   model: "claude-sonnet-4-5-20250929"
+  judge_model: "claude-sonnet-4-5-20250929"
   max_tokens: 4096
   temperature: 0
 
 tests:
-  # --- Structural + judge: greeting tone ---
   - name: "greeting is warm and friendly"
     type: single_turn
     input:
@@ -25,7 +26,6 @@ tests:
           The response should feel warm and friendly, not robotic or overly formal.
           It should greet the user naturally in multiple languages.
 
-  # --- Judge: personalization quality ---
   - name: "personalized greeting feels natural"
     type: single_turn
     input:
@@ -41,7 +41,6 @@ tests:
           greeting, not just append it mechanically. Each language greeting
           should feel like a native speaker wrote it.
 
-  # --- Judge: format compliance ---
   - name: "follows three-language format"
     type: single_turn
     input:

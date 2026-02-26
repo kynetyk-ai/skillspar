@@ -1,0 +1,52 @@
+# 04 — Context file injection at suite and test level.
+# Demonstrates: suite-level context, test-level context, context.lines ranges,
+# combining suite + test context.
+
+suite: "context injection"
+skill: "./sample-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0
+
+context:
+  - file: "./sample-ref.py"
+
+tests:
+  - name: "references suite-level context"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "What does the greet function do?"
+    assertions:
+      - type: output_contains
+        value: "Hello"
+
+  - name: "uses test-level context with line range"
+    type: single_turn
+    context:
+      - file: "./sample-ref.py"
+        lines: [5, 7]
+    input:
+      messages:
+        - role: user
+          content: "Explain just the greet function"
+    assertions:
+      - type: output_matches_regex
+        pattern: "(?i)greet|greeting"
+
+  - name: "combines suite and test context"
+    type: single_turn
+    context:
+      - file: "./sample-skill/SKILL.md"
+    input:
+      messages:
+        - role: user
+          content: "How does the greet function relate to the skill definition?"
+    assertions:
+      - type: output_matches_regex
+        pattern: "(?i)greet|greeting"
+      - type: output_matches_regex
+        pattern: "(?i)skill|multilingual"

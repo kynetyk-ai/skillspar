@@ -70,6 +70,16 @@ This skill produces `.eval.yaml` test suites for the Skillspar framework. Given 
 - Default to `single_turn`. Use `multi_turn` only when the claim requires sequential tool calls with intermediate results.
 - Provide reference material as `tool_result` messages in conversation history, not as user-message context. Models weight information differently by source.
 - Consider adding a `conversation_prefix` when the skill is likely to be used mid-conversation (most skills are). A prefix simulates prior context to test whether the skill's steer persists after context dilution.
+- **Make prefix content completely unrelated to the skill.** If the prefix is topically related, it injects helpful context that steers the model in the right direction regardless of the skill — you're no longer measuring dilution. Use something with zero topical overlap: a passage from an open-source novel, a discussion about an unrelated domain, anything that couldn't accidentally help. The point is to fill the context window with noise, not signal.
+
+## Expect iteration
+
+**Tell the user that the first run is exploratory.** Generated suites are a strong starting point, but initial runs typically surface 2–3 assertions that need adjustment — this is normal and expected, not a failure of the generation process. Test failures come from two distinct sources:
+
+1. **The skill doesn't steer well enough** — the model ignores or partially follows the skill. This is a real finding about the skill's quality.
+2. **The test doesn't match reality** — the assertion is too strict, too vague, or tests the wrong thing. Common patterns: `turn_count exactly: 1` on a task that takes two turns (tool call + confirmation), `llm_judge` criteria that reference context the judge can't see (it doesn't see the skill definition or prefix), regex patterns too narrow for valid output variations, and `conversation_prefix` tests with ambiguous inputs the model interprets as continuing the prefix conversation.
+
+After the first run, help the user distinguish skill problems from test problems and adjust accordingly. A suite that stabilizes after 2–3 iterations and reliably separates skill from baseline is the goal.
 
 # References
 

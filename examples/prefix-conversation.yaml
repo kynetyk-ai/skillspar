@@ -1,0 +1,42 @@
+# External conversation prefix — a 3-exchange coding session.
+# Referenced by 07-conversation-prefix-file.eval.yaml via conversation_prefix.file.
+
+- role: user
+  content: "Can you help me refactor this Python function to use list comprehension?"
+- role: assistant
+  content: >
+    Sure! List comprehensions are a concise way to create lists. Instead of
+    using a for-loop with append, you can write the expression inline.
+    Could you share the function you'd like to refactor?
+- role: user
+  content: |
+    Here it is:
+    def get_even_numbers(nums):
+        result = []
+        for n in nums:
+            if n % 2 == 0:
+                result.append(n)
+        return result
+- role: assistant
+  content: |
+    Here's the refactored version using a list comprehension:
+
+    ```python
+    def get_even_numbers(nums):
+        return [n for n in nums if n % 2 == 0]
+    ```
+
+    This is more Pythonic and easier to read for simple filtering operations.
+- role: user
+  content: "Great, that looks clean. Now can you also add type hints?"
+- role: assistant
+  content: |
+    Of course! Here's the version with type hints:
+
+    ```python
+    def get_even_numbers(nums: list[int]) -> list[int]:
+        return [n for n in nums if n % 2 == 0]
+    ```
+
+    The `list[int]` annotations make it clear what types the function expects
+    and returns.

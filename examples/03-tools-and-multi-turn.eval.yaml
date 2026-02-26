@@ -1,7 +1,10 @@
-# Multi-turn eval suite demonstrating advanced features.
-# This tests a hypothetical skill that creates files.
+# 03 — Tools, multi-turn loops, and all tool/turn assertions.
+# Demonstrates: builtin tools, tool_called, tool_not_called, tool_args_match,
+# tool_sequence, tool_called_times (exactly/min), turn_count (exactly/min/max),
+# tool_responses (single/sequence/wildcard), conversation history with
+# tool_calls/tool_result in single_turn.
 
-suite: "file creator skill"
+suite: "file operations"
 skill: "./sample-skill/SKILL.md"
 
 defaults:
@@ -14,7 +17,7 @@ tools:
   - builtin: Write
 
 tests:
-  # --- Single-turn with tool assertions ---
+  # --- Single-turn: tool_called + tool_args_match ---
   - name: "creates a file when asked"
     type: single_turn
     input:
@@ -29,8 +32,19 @@ tests:
         path: "$.file_path"
         pattern: "hello\\.txt$"
 
-  # --- Single-turn with conversation history ---
-  - name: "continues from prior context"
+  # --- Single-turn: tool_not_called ---
+  - name: "does not read for a simple write"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Write 'hello' to /tmp/out.txt"
+    assertions:
+      - type: tool_not_called
+        tool: Read
+
+  # --- Single-turn with conversation history (tool_calls/tool_result) ---
+  - name: "continues from prior tool context"
     type: single_turn
     input:
       messages:
@@ -53,7 +67,7 @@ tests:
       - type: tool_called
         tool: Write
 
-  # --- Multi-turn with scripted tool responses ---
+  # --- Multi-turn: tool_sequence + tool_called_times (exactly) ---
   - name: "reads then writes a modified file"
     type: multi_turn
     max_turns: 5
@@ -83,7 +97,7 @@ tests:
         tool: Write
         exactly: 1
 
-  # --- Multi-turn with response sequences (polling scenario) ---
+  # --- Multi-turn: response sequences + tool_called_times (min) ---
   - name: "polls until ready then writes"
     type: multi_turn
     max_turns: 8
@@ -108,5 +122,58 @@ tests:
     assertions:
       - type: tool_called
         tool: Read
+      - type: tool_called_times
+        tool: Read
+        min: 3
       - type: tool_called
         tool: Write
+
+  # --- Multi-turn: turn_count (exactly) ---
+  # A single tool call takes 2 turns: (1) model calls Write, (2) model confirms.
+  - name: "completes single-step task in two turns"
+    type: multi_turn
+    max_turns: 5
+    input:
+      messages:
+        - role: user
+          content: "Write the word 'test' to /tmp/test.txt"
+    tool_responses:
+      - match:
+          tool: Write
+        response:
+          content: "File written successfully"
+      - match: "*"
+        response:
+          content: "OK"
+    assertions:
+      - type: tool_called
+        tool: Write
+      - type: turn_count
+        exactly: 2
+
+  # --- Multi-turn: turn_count (min/max) ---
+  - name: "completes read-modify-write within budget"
+    type: multi_turn
+    max_turns: 5
+    input:
+      messages:
+        - role: user
+          content: "Read config.json, update the version to 2.0, and write it back"
+    tool_responses:
+      - match:
+          tool: Read
+        response:
+          content: '{"version": "1.0", "name": "app"}'
+      - match:
+          tool: Write
+        response:
+          content: "File written successfully"
+      - match: "*"
+        response:
+          content: "OK"
+    assertions:
+      - type: tool_sequence
+        tools: [Read, Write]
+      - type: turn_count
+        min: 1
+        max: 3

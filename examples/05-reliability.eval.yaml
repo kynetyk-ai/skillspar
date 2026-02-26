@@ -1,5 +1,7 @@
-# Reliability eval suite demonstrating repeated runs, baseline, and thresholds.
-# This tests a greeting skill with statistical confidence.
+# 05 — Repeated runs, baselines, and pass thresholds.
+# Demonstrates: defaults.runs, defaults.pass_threshold, defaults.max_retries,
+# defaults.concurrency, per-test runs/pass_threshold overrides,
+# temperature > 0 for variability, baseline: true.
 
 suite: "greeting skill reliability"
 skill: "./sample-skill/SKILL.md"
@@ -14,8 +16,7 @@ defaults:
   concurrency: 4
 
 tests:
-  # --- Repeated runs with baseline comparison ---
-  - name: "greets with name"
+  - name: "greets with name reliably"
     type: single_turn
     baseline: true
     input:
@@ -26,8 +27,7 @@ tests:
       - type: output_contains
         value: "Alice"
 
-  # --- Critical test: must always pass ---
-  - name: "always responds politely"
+  - name: "always finishes without error"
     type: single_turn
     runs: 10
     pass_threshold: 1.0
@@ -39,8 +39,7 @@ tests:
       - type: stop_reason
         value: end_turn
 
-  # --- Standard reliability check: multilingual output ---
-  - name: "greets in three languages"
+  - name: "produces multilingual output"
     type: single_turn
     input:
       messages:

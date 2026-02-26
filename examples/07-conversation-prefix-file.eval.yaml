@@ -1,0 +1,41 @@
+# 07 — External conversation prefix file with skill_position: bottom.
+# Demonstrates: conversation_prefix.file, skill_position: bottom.
+
+suite: "mid-conversation skill retention (file prefix)"
+skill: "./sample-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0
+
+conversation_prefix:
+  skill_position: bottom
+  file: "./prefix-conversation.yaml"
+
+tests:
+  - name: "skill activates from bottom position"
+    type: single_turn
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Hey, I'm Carol!"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+      - type: output_contains
+        value: "Carol"
+
+  - name: "greets user by name from bottom position"
+    type: single_turn
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Good morning! I'm Eve, nice to meet you!"
+    assertions:
+      - type: output_contains
+        value: "Eve"
+      - type: stop_reason
+        value: end_turn

@@ -1,0 +1,92 @@
+# 08 — Advanced features: system_prompt, skill_only, custom tools.
+# Demonstrates: defaults.system_prompt, skill_only: true on messages,
+# custom tool definition with input_schema, multi_turn with custom tool.
+
+suite: "advanced features"
+skill: "./sample-skill/SKILL.md"
+
+defaults:
+  model: "claude-sonnet-4-5-20250929"
+  judge_model: "claude-sonnet-4-5-20250929"
+  max_tokens: 4096
+  temperature: 0
+  system_prompt: >
+    You are a cheerful assistant who always starts responses with an enthusiastic
+    exclamation. Maintain a positive, upbeat tone in all interactions.
+
+tools:
+  - builtin: Read
+  - name: "greeting_lookup"
+    description: "Look up a culturally appropriate greeting for a given locale"
+    input_schema:
+      type: object
+      properties:
+        locale:
+          type: string
+          description: "ISO locale code, e.g. 'en-US', 'es-MX', 'ja-JP'"
+      required: [locale]
+
+tests:
+  # --- system_prompt establishes persona ---
+  - name: "system prompt establishes persona"
+    type: single_turn
+    input:
+      messages:
+        - role: user
+          content: "Hello!"
+    assertions:
+      - type: llm_judge
+        criteria: >
+          The response should reflect an enthusiastic, cheerful persona as
+          established by the system prompt. Look for an upbeat tone and
+          positive energy in the greeting.
+
+  # --- skill_only: true strips reference data from baseline ---
+  - name: "uses skill-only reference data"
+    type: single_turn
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "What greeting formats do you support?"
+        - role: assistant
+          skill_only: true
+          content: "Let me check the reference."
+          tool_calls:
+            - id: "tc_ref"
+              name: Read
+              input:
+                file_path: "references/greeting-formats.md"
+        - role: tool_result
+          skill_only: true
+          tool_use_id: "tc_ref"
+          content: |
+            ## Greeting Formats
+            - English: "Hello {name}!"
+            - Spanish: "¡Hola {name}!"
+            - Japanese: "こんにちは {name}!"
+        - role: user
+          content: "Greet me as Dave using those formats"
+    assertions:
+      - type: output_contains
+        value: "Dave"
+
+  # --- Custom tool invocation ---
+  - name: "invokes custom lookup tool"
+    type: multi_turn
+    max_turns: 5
+    input:
+      messages:
+        - role: user
+          content: "Look up the proper greeting for the ja-JP locale and greet me"
+    tool_responses:
+      - match:
+          tool: greeting_lookup
+        response:
+          content: '{"locale": "ja-JP", "greeting": "こんにちは", "formality": "standard"}'
+      - match: "*"
+        response:
+          content: "OK"
+    assertions:
+      - type: tool_called
+        tool: greeting_lookup

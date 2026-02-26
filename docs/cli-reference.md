@@ -2,6 +2,22 @@
 
 Full reference for `.eval.yaml` test suite configuration, CLI commands, and result interpretation.
 
+## Contents
+
+- [Configuration Defaults](#configuration-defaults)
+- [Test Suite Format](#test-suite-format)
+- [Baseline Testing](#baseline-testing)
+- [Mid-Conversation Testing](#mid-conversation-testing)
+- [Repeated Runs & Reliability](#repeated-runs--reliability)
+- [Running Tests](#running-tests)
+- [Watch Mode](#watch-mode)
+- [Snapshots](#snapshots)
+- [Architecture](#architecture)
+- [Interpreting Results](#interpreting-results)
+- [Iterative Refinement Workflow](#iterative-refinement-workflow)
+
+**See also:** [User Guide](user-guide.md) | [Examples Guide](examples.md)
+
 ## Configuration Defaults
 
 All defaults can be overridden in the `defaults` block of your `.eval.yaml` or per-test:

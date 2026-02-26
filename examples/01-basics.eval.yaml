@@ -1,5 +1,5 @@
-# Basic eval suite demonstrating the test definition format.
-# This tests a simple greeting skill.
+# 01 — Single-turn tests with all output assertion types.
+# Demonstrates: stop_reason, output_contains, output_not_contains, output_matches_regex.
 
 suite: "greeting skill basics"
 skill: "./sample-skill/SKILL.md"
@@ -10,7 +10,6 @@ defaults:
   temperature: 0
 
 tests:
-  # --- Single-turn: basic greeting ---
   - name: "responds to a simple greeting"
     type: single_turn
     input:
@@ -23,7 +22,6 @@ tests:
       - type: output_matches_regex
         pattern: "(?i)hello|hi|hey"
 
-  # --- Single-turn: uses the user's name ---
   - name: "includes user name in greeting"
     type: single_turn
     input:
@@ -34,26 +32,24 @@ tests:
       - type: output_contains
         value: "Alice"
 
-  # --- Single-turn: offers help ---
-  - name: "offers to help"
+  - name: "does not include unsolicited offers to help"
     type: single_turn
     input:
       messages:
         - role: user
           content: "Hey there"
     assertions:
-      - type: output_matches_regex
-        pattern: "(?i)help|assist"
+      - type: output_not_contains
+        value: "How can I help"
 
-  # --- Single-turn: does not call tools for a simple greeting ---
-  - name: "does not use tools for greeting"
+  - name: "greets in three languages"
     type: single_turn
     input:
       messages:
         - role: user
           content: "Hello!"
     assertions:
-      - type: tool_not_called
-        tool: Write
-      - type: tool_not_called
-        tool: Read
+      - type: output_matches_regex
+        pattern: "(?i)hola"
+      - type: output_matches_regex
+        pattern: "こんにちは"
