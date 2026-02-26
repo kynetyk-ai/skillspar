@@ -121,6 +121,41 @@ Use this to simulate prior tool interactions without running a full multi-turn l
         criteria: "Response correctly builds on prior context"
 ```
 
+## Skill-Only Messages
+
+Mark messages as `skill_only: true` to include them only in skill runs, stripping them from baseline runs. This is useful when test messages simulate the model reading skill reference material — baseline should test the model without that domain knowledge.
+
+```yaml
+  - name: "uses reference data correctly"
+    type: single_turn
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Show me the JSON."
+        - role: assistant
+          skill_only: true           # stripped for baseline
+          content: "Let me check the reference."
+          tool_calls:
+            - id: "tc_001"
+              name: Read
+              input: { file_path: "references/schema.md" }
+        - role: tool_result
+          skill_only: true           # stripped for baseline
+          tool_use_id: "tc_001"
+          content: "## Schema reference data ..."
+        - role: user
+          content: "Build it."
+    assertions:
+      - type: output_contains
+        value: "expected output"
+```
+
+Rules:
+- Default is `false` — messages are included in both skill and baseline runs
+- Always mark both the `assistant` (with tool_calls) and its matching `tool_result` messages as `skill_only: true` together — orphaning one side produces an invalid conversation for baseline
+- `skill_only` has no effect on tests without `baseline: true`
+
 ## Multi-Turn Test
 
 ```yaml

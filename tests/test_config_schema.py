@@ -429,6 +429,43 @@ class TestResolvedConfig:
         assert config.filter_pattern == "test_*"
 
 
+class TestSkillOnlyField:
+    def test_default_false(self):
+        m = MessageConfig(role="user", content="Hello")
+        assert m.skill_only is False
+
+    def test_explicit_true(self):
+        m = MessageConfig(role="assistant", content="Reading ref.", skill_only=True)
+        assert m.skill_only is True
+
+    def test_parsed_from_yaml_dict(self):
+        raw = {
+            "suite": "test",
+            "skill": "./SKILL.md",
+            "tests": [
+                {
+                    "type": "single_turn",
+                    "name": "skill_only test",
+                    "input": {
+                        "messages": [
+                            {"role": "user", "content": "Hi"},
+                            {"role": "assistant", "content": "Reading.", "skill_only": True},
+                            {"role": "tool_result", "tool_use_id": "tc_001", "content": "data", "skill_only": True},
+                            {"role": "user", "content": "Go"},
+                        ]
+                    },
+                    "assertions": [],
+                }
+            ],
+        }
+        suite = EvalSuite.model_validate(raw)
+        msgs = suite.tests[0].input.messages
+        assert msgs[0].skill_only is False
+        assert msgs[1].skill_only is True
+        assert msgs[2].skill_only is True
+        assert msgs[3].skill_only is False
+
+
 class TestCacheControlField:
     def test_message_without_cache_control(self):
         m = MessageConfig(role="user", content="Hello")

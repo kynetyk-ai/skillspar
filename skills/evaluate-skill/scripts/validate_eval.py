@@ -532,6 +532,9 @@ def _run_semantic_checks(raw: dict) -> list[str]:
                         f"  Criteria should be a detailed description of what to evaluate (at least a sentence)."
                     )
 
+        # skill_only checks
+        _check_skill_only(test, i, test_name, warnings)
+
     return warnings
 
 
@@ -603,6 +606,75 @@ def _check_undeclared_tools(test: dict, idx: int, name: str, declared: list[str]
                         f"  Either add \"{tool_name}\" to the top-level tools list or fix the assertion."
                     )
                     break  # one warning per assertion is enough
+
+
+def _check_skill_only(test: dict, idx: int, name: str, warnings: list[str]) -> None:
+    """Check skill_only consistency: orphaned pairs and missing baseline."""
+    messages = test.get("input", {}).get("messages", [])
+    has_skill_only = False
+
+    # Build maps: tool_call id → assistant msg index, tool_result tool_use_id → msg index
+    tc_id_to_msg: dict[str, int] = {}  # tool_call id → message index of assistant
+    tr_id_to_msg: dict[str, int] = {}  # tool_use_id → message index of tool_result
+
+    for mi, msg in enumerate(messages):
+        if not isinstance(msg, dict):
+            continue
+        if msg.get("skill_only"):
+            has_skill_only = True
+        role = msg.get("role")
+        if role == "assistant":
+            for tc in msg.get("tool_calls", []):
+                if isinstance(tc, dict) and tc.get("id"):
+                    tc_id_to_msg[tc["id"]] = mi
+        elif role == "tool_result":
+            tuid = msg.get("tool_use_id")
+            if tuid:
+                tr_id_to_msg[tuid] = mi
+
+    # Check orphaned skill_only pairs
+    for mi, msg in enumerate(messages):
+        if not isinstance(msg, dict):
+            continue
+        role = msg.get("role")
+        is_skill_only = bool(msg.get("skill_only"))
+
+        if role == "tool_result" and is_skill_only:
+            tuid = msg.get("tool_use_id")
+            if tuid and tuid in tc_id_to_msg:
+                asst_idx = tc_id_to_msg[tuid]
+                asst_msg = messages[asst_idx]
+                if isinstance(asst_msg, dict) and not asst_msg.get("skill_only"):
+                    warnings.append(
+                        f"tests[{idx}] \"{name}\" — orphaned skill_only pair\n"
+                        f"  input.messages[{mi}] (tool_result, tool_use_id=\"{tuid}\") is skill_only: true\n"
+                        f"  but the matching assistant message at index {asst_idx} is not.\n"
+                        f"  Baseline would have the tool_call but no result. Mark both as skill_only: true."
+                    )
+
+        if role == "assistant" and is_skill_only:
+            for tc in msg.get("tool_calls", []):
+                if not isinstance(tc, dict):
+                    continue
+                tc_id = tc.get("id")
+                if tc_id and tc_id in tr_id_to_msg:
+                    tr_idx = tr_id_to_msg[tc_id]
+                    tr_msg = messages[tr_idx]
+                    if isinstance(tr_msg, dict) and not tr_msg.get("skill_only"):
+                        warnings.append(
+                            f"tests[{idx}] \"{name}\" — orphaned skill_only pair\n"
+                            f"  input.messages[{mi}] (assistant with tool_call id=\"{tc_id}\") is skill_only: true\n"
+                            f"  but the matching tool_result at index {tr_idx} is not.\n"
+                            f"  Baseline would have the result but no call. Mark both as skill_only: true."
+                        )
+
+    # skill_only without baseline
+    if has_skill_only and not test.get("baseline"):
+        warnings.append(
+            f"tests[{idx}] \"{name}\" — skill_only messages without baseline\n"
+            f"  Messages are marked skill_only: true but baseline: false (or omitted).\n"
+            f"  skill_only has no effect without baseline enabled."
+        )
 
 
 # ---------------------------------------------------------------------------

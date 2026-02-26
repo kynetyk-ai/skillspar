@@ -120,6 +120,7 @@ class MessageConfig(BaseModel):
     tool_calls: list[ToolCallConfig] | None = None
     tool_use_id: str | None = None
     cache_control: dict[str, str] | None = None
+    skill_only: bool = False
 
 
 class InputConfig(BaseModel):

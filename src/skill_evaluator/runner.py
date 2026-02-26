@@ -278,7 +278,10 @@ class SuiteRunner:
         skill_cache = self._skill_cache_control()
         skill_messages = build_skill_messages(skill_body, cache_control=skill_cache) if skill_body else []
         prefix_messages = list(self._prefix_messages)
-        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, list(test.input.messages))
+        test_messages = list(test.input.messages)
+        if not skill_body:  # baseline run — strip skill-only messages
+            test_messages = [m for m in test_messages if not m.skill_only]
+        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, test_messages)
         input_config = InputConfig(messages=merged_messages)
 
         system_prompt = self._build_system_prompt()
@@ -342,7 +345,10 @@ class SuiteRunner:
         skill_cache = self._skill_cache_control()
         skill_messages = build_skill_messages(skill_body, cache_control=skill_cache) if skill_body else []
         prefix_messages = list(self._prefix_messages)
-        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, list(test.input.messages))
+        test_messages = list(test.input.messages)
+        if not skill_body:  # baseline run — strip skill-only messages
+            test_messages = [m for m in test_messages if not m.skill_only]
+        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, test_messages)
         input_config = InputConfig(messages=merged_messages)
 
         system_prompt = self._build_system_prompt()

@@ -850,6 +850,153 @@ tests:
 
 
 # ---------------------------------------------------------------------------
+# New: skill_only message filtering
+# ---------------------------------------------------------------------------
+
+
+class TestSkillOnlyFiltering:
+    def _make_suite_files(self, tmp_path, yaml_content):
+        skill_dir = tmp_path / "skills"
+        skill_dir.mkdir(exist_ok=True)
+        (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nYou are a helpful assistant.")
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text(yaml_content)
+        return eval_file
+
+    def test_skill_only_messages_stripped_in_baseline(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """Baseline runs should not include messages marked skill_only: true."""
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
+            text="Hello!"
+        )
+        yaml = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: single_turn
+    name: "skill_only check"
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Show me the JSON."
+        - role: assistant
+          skill_only: true
+          content: "Let me read the reference."
+          tool_calls:
+            - id: "tc_001"
+              name: Read
+              input: { file_path: "refs/schema.md" }
+        - role: tool_result
+          skill_only: true
+          tool_use_id: "tc_001"
+          content: "## Schema reference data"
+        - role: user
+          content: "Build it."
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        eval_file = self._make_suite_files(tmp_path, yaml)
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        calls = mock_anthropic_client.messages.create.call_args_list
+        assert len(calls) == 2  # skill + baseline
+
+        # Skill run should contain the reference material
+        skill_msg_str = str(calls[0].kwargs["messages"])
+        assert "Schema reference data" in skill_msg_str
+        assert "Let me read the reference" in skill_msg_str
+
+        # Baseline run should NOT contain the reference material
+        baseline_msg_str = str(calls[1].kwargs["messages"])
+        assert "Schema reference data" not in baseline_msg_str
+        assert "Let me read the reference" not in baseline_msg_str
+        # But should still have the non-skill_only user messages
+        assert "Show me the JSON" in baseline_msg_str
+        assert "Build it" in baseline_msg_str
+
+    def test_skill_only_messages_kept_in_skill_run(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """Skill runs should include all messages, including skill_only ones."""
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
+            text="Hello!"
+        )
+        yaml = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: single_turn
+    name: "skill run check"
+    baseline: false
+    input:
+      messages:
+        - role: user
+          content: "Show me the JSON."
+        - role: assistant
+          skill_only: true
+          content: "Reading reference."
+        - role: user
+          content: "Build it."
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        eval_file = self._make_suite_files(tmp_path, yaml)
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        calls = mock_anthropic_client.messages.create.call_args_list
+        assert len(calls) == 1  # skill only, no baseline
+        msg_str = str(calls[0].kwargs["messages"])
+        assert "Reading reference" in msg_str
+
+    def test_skill_only_multi_turn_baseline(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
+        """Multi-turn baseline runs should also strip skill_only messages."""
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
+            text="Done!", stop_reason="end_turn"
+        )
+        yaml = """
+suite: "test"
+skill: "./skills/SKILL.md"
+tests:
+  - type: multi_turn
+    name: "multi turn skill_only"
+    baseline: true
+    input:
+      messages:
+        - role: user
+          content: "Do something"
+        - role: assistant
+          skill_only: true
+          content: "Reference lookup"
+        - role: user
+          content: "Proceed"
+    assertions:
+      - type: stop_reason
+        value: end_turn
+"""
+        eval_file = self._make_suite_files(tmp_path, yaml)
+        suite = load_eval_suite(eval_file)
+        runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)
+        runner.run()
+
+        calls = mock_anthropic_client.messages.create.call_args_list
+        assert len(calls) == 2  # skill + baseline
+
+        baseline_msg_str = str(calls[1].kwargs["messages"])
+        assert "Reference lookup" not in baseline_msg_str
+        assert "Do something" in baseline_msg_str
+
+
+# ---------------------------------------------------------------------------
 # New: Prefix integration
 # ---------------------------------------------------------------------------
 
