@@ -17,8 +17,10 @@ from skill_evaluator.config.schema import (
     StopReasonAssertion,
     SuiteDefaults,
     ToolCalledAssertion,
+    ToolCalledTimesAssertion,
     ToolNotCalledAssertion,
     ToolResponseConfig,
+    TurnCountAssertion,
 )
 
 
@@ -588,3 +590,71 @@ class TestConversationPrefixConfig:
         }
         suite = EvalSuite.model_validate(raw)
         assert suite.conversation_prefix is None
+
+
+class TestToolCalledTimesValidation:
+    def test_exactly_valid(self):
+        a = ToolCalledTimesAssertion(type="tool_called_times", tool="Read", exactly=1)
+        assert a.exactly == 1
+
+    def test_min_only_valid(self):
+        a = ToolCalledTimesAssertion(type="tool_called_times", tool="Read", min=1)
+        assert a.min == 1
+
+    def test_max_only_valid(self):
+        a = ToolCalledTimesAssertion(type="tool_called_times", tool="Read", max=5)
+        assert a.max == 5
+
+    def test_min_max_valid(self):
+        a = ToolCalledTimesAssertion(type="tool_called_times", tool="Read", min=1, max=5)
+        assert a.min == 1 and a.max == 5
+
+    def test_no_bounds_rejected(self):
+        with pytest.raises(ValidationError, match="At least one of"):
+            ToolCalledTimesAssertion(type="tool_called_times", tool="Read")
+
+    def test_exactly_with_min_rejected(self):
+        with pytest.raises(ValidationError, match="cannot be combined"):
+            ToolCalledTimesAssertion(type="tool_called_times", tool="Read", exactly=1, min=1)
+
+    def test_exactly_with_max_rejected(self):
+        with pytest.raises(ValidationError, match="cannot be combined"):
+            ToolCalledTimesAssertion(type="tool_called_times", tool="Read", exactly=1, max=5)
+
+    def test_min_greater_than_max_rejected(self):
+        with pytest.raises(ValidationError, match="min.*<=.*max"):
+            ToolCalledTimesAssertion(type="tool_called_times", tool="Read", min=5, max=1)
+
+
+class TestTurnCountValidation:
+    def test_exactly_valid(self):
+        a = TurnCountAssertion(type="turn_count", exactly=3)
+        assert a.exactly == 3
+
+    def test_min_only_valid(self):
+        a = TurnCountAssertion(type="turn_count", min=1)
+        assert a.min == 1
+
+    def test_max_only_valid(self):
+        a = TurnCountAssertion(type="turn_count", max=10)
+        assert a.max == 10
+
+    def test_min_max_valid(self):
+        a = TurnCountAssertion(type="turn_count", min=2, max=5)
+        assert a.min == 2 and a.max == 5
+
+    def test_no_bounds_rejected(self):
+        with pytest.raises(ValidationError, match="At least one of"):
+            TurnCountAssertion(type="turn_count")
+
+    def test_exactly_with_min_rejected(self):
+        with pytest.raises(ValidationError, match="cannot be combined"):
+            TurnCountAssertion(type="turn_count", exactly=3, min=1)
+
+    def test_exactly_with_max_rejected(self):
+        with pytest.raises(ValidationError, match="cannot be combined"):
+            TurnCountAssertion(type="turn_count", exactly=3, max=5)
+
+    def test_min_greater_than_max_rejected(self):
+        with pytest.raises(ValidationError, match="min.*<=.*max"):
+            TurnCountAssertion(type="turn_count", min=10, max=2)

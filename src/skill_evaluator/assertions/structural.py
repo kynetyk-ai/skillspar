@@ -79,7 +79,14 @@ def check_tool_args_match(
             details={"tools_called": trace.tool_names},
         )
 
-    expr = jsonpath_parse(assertion.path)
+    try:
+        expr = jsonpath_parse(assertion.path)
+    except Exception as e:
+        return AssertionResult(
+            status=AssertionStatus.ERROR,
+            assertion_type="tool_args_match",
+            message=f"Invalid JSONPath expression '{assertion.path}': {e}",
+        )
     for tc in matching_calls:
         matches = expr.find(tc.input)
         for match in matches:

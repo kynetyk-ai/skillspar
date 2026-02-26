@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import APIError, Anthropic
 
 from skill_evaluator.config.schema import InputConfig, ResolvedConfig
 from skill_evaluator.engine.conversation import build_messages
@@ -88,7 +88,7 @@ class SingleTurnExecutor:
 
         try:
             response = self.client.messages.create(**kwargs)
-        except Exception as e:
+        except APIError as e:
             logger.error("API call failed: %s", e)
             raise ExecutionError(f"API call failed: {e}") from e
 

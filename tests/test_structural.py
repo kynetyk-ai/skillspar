@@ -1,5 +1,7 @@
 """Tests for assertions/structural.py — structural assertion handlers."""
 
+import pytest
+
 from skill_evaluator.assertions.base import AssertionStatus
 from skill_evaluator.assertions.structural import (
     check_tool_args_match,
@@ -152,7 +154,6 @@ class TestTurnCount:
         result = check_turn_count(a, multi_turn_trace)
         assert result.status == AssertionStatus.FAILED
 
-    def test_no_constraints_pass(self, simple_text_trace):
-        a = TurnCountAssertion(type="turn_count")
-        result = check_turn_count(a, simple_text_trace)
-        assert result.status == AssertionStatus.PASSED
+    def test_no_constraints_rejected(self):
+        with pytest.raises(ValueError, match="At least one of"):
+            TurnCountAssertion(type="turn_count")

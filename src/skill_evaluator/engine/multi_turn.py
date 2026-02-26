@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Any
 
-from anthropic import Anthropic
+from anthropic import APIError, Anthropic
 
 from skill_evaluator.config.schema import InputConfig, ResolvedConfig, ToolResponseConfig
 from skill_evaluator.engine.conversation import build_messages
@@ -15,6 +15,18 @@ from skill_evaluator.engine.trace import Trace
 from skill_evaluator.tools.matcher import match_tool_response
 
 logger = logging.getLogger(__name__)
+
+
+def _serialize_tool_result(matched: dict[str, Any]) -> str:
+    """Serialize a matched tool response for the API.
+
+    If the response already has a plain string ``content`` key, return it
+    directly.  Otherwise JSON-encode the whole dict so structured data
+    round-trips correctly.
+    """
+    if isinstance(matched.get("content"), str):
+        return matched["content"]
+    return json.dumps(matched)
 
 
 class MultiTurnExecutionError(Exception):
@@ -63,7 +75,7 @@ class MultiTurnExecutor:
 
             try:
                 response = self.client.messages.create(**kwargs)
-            except Exception as e:
+            except APIError as e:
                 logger.error("API call failed on turn %d: %s", turn_num, e)
                 raise MultiTurnExecutionError(f"API call failed: {e}") from e
 
@@ -99,7 +111,7 @@ class MultiTurnExecutor:
                 tool_result_blocks.append({
                     "type": "tool_result",
                     "tool_use_id": tc.id,
-                    "content": json.dumps(matched) if not isinstance(matched.get("content"), str) else matched["content"],
+                    "content": _serialize_tool_result(matched),
                 })
             messages.append({"role": "user", "content": tool_result_blocks})
 

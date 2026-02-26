@@ -62,6 +62,17 @@ def _setup_logging(log_level: str | None) -> None:
     logging.getLogger("anthropic").setLevel(logging.WARNING)
 
 
+def _check_api_key() -> None:
+    """Fail fast if ANTHROPIC_API_KEY is not set."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        click.echo(
+            "Error: ANTHROPIC_API_KEY environment variable is not set. "
+            "Set it or add it to a .env file.",
+            err=True,
+        )
+        sys.exit(2)
+
+
 @click.group()
 @click.version_option(package_name="skillspar")
 def main():
@@ -108,6 +119,7 @@ def run(eval_files, runs, concurrency, output, output_format, filter_pattern, mo
     from skill_evaluator.discovery import DiscoveryError, resolve_eval_paths
 
     load_dotenv()
+    _check_api_key()
     _setup_logging(log_level)
 
     # Resolve format
@@ -147,6 +159,56 @@ def run(eval_files, runs, concurrency, output, output_format, filter_pattern, mo
         )
 
 
+def _load_and_execute(eval_file, *, cli_runs=None, cli_concurrency=None, cli_model=None,
+                      cli_output=None, cli_output_format=None, cli_verbose=False,
+                      cli_filter_pattern=None):
+    """Load, execute, and summarise a suite. Returns (suite, config, suite_result, cost_summary, cache_summary, json_report)."""
+    from skill_evaluator.reporting.cost import build_cache_summary, build_cost_summary
+    from skill_evaluator.reporting.json_report import JsonReporter
+
+    try:
+        suite = load_eval_suite(eval_file)
+    except ConfigLoadError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
+
+    config = resolve_config(
+        suite.defaults,
+        cli_runs=cli_runs,
+        cli_concurrency=cli_concurrency,
+        cli_model=cli_model,
+        cli_output=cli_output,
+        cli_output_format=cli_output_format,
+        cli_verbose=cli_verbose,
+        cli_filter_pattern=cli_filter_pattern,
+    )
+
+    if cli_filter_pattern is not None:
+        pattern_lower = cli_filter_pattern.lower()
+        suite.tests = [t for t in suite.tests if pattern_lower in t.name.lower()]
+        if not suite.tests:
+            click.echo(f"Error: no tests match filter '{cli_filter_pattern}'", err=True)
+            sys.exit(2)
+
+    try:
+        suite_result = execute_suite(Path(eval_file), suite, config)
+    except (SkillParseError, PrefixLoadError) as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(2)
+
+    cost_summary = build_cost_summary(suite_result, config.model)
+    cache_summary = build_cache_summary(suite_result, config.model)
+
+    json_reporter = JsonReporter()
+    json_report = json_reporter.build_report(suite, suite_result, model=config.model)
+    if cost_summary:
+        json_report["summary"]["cost"] = cost_summary
+    if cache_summary:
+        json_report["summary"]["cache_summary"] = cache_summary
+
+    return suite, config, suite_result, cost_summary, cache_summary, json_report
+
+
 def _run_single_suite(
     eval_file: Path,
     *,
@@ -159,14 +221,8 @@ def _run_single_suite(
     verbose,
 ) -> None:
     """Run a single eval suite — preserves original single-file behavior."""
-    try:
-        suite = load_eval_suite(eval_file)
-    except ConfigLoadError as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(2)
-
-    config = resolve_config(
-        suite.defaults,
+    suite, config, suite_result, cost_summary, cache_summary, json_report = _load_and_execute(
+        eval_file,
         cli_runs=runs,
         cli_concurrency=concurrency,
         cli_model=model,
@@ -175,26 +231,6 @@ def _run_single_suite(
         cli_verbose=verbose,
         cli_filter_pattern=filter_pattern,
     )
-
-    # Filter tests by name substring
-    if filter_pattern is not None:
-        pattern_lower = filter_pattern.lower()
-        suite.tests = [t for t in suite.tests if pattern_lower in t.name.lower()]
-        if not suite.tests:
-            click.echo(f"Error: no tests match filter '{filter_pattern}'", err=True)
-            sys.exit(2)
-
-    try:
-        suite_result = execute_suite(eval_file, suite, config)
-    except (SkillParseError, PrefixLoadError) as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(2)
-
-    # Compute cost and cache summaries
-    from skill_evaluator.reporting.cost import build_cache_summary, build_cost_summary
-
-    cost_summary = build_cost_summary(suite_result, config.model)
-    cache_summary = build_cache_summary(suite_result, config.model)
 
     reporter = ConsoleReporter(verbose=verbose)
     reporter.report(suite_result, cost_summary=cost_summary, cache_summary=cache_summary)
@@ -213,13 +249,7 @@ def _run_single_suite(
             from skill_evaluator.reporting.json_report import JsonReporter
 
             json_reporter = JsonReporter()
-            report = json_reporter.build_report(suite, suite_result, model=config.model)
-            # Inject cost and cache data into report summary
-            if cost_summary:
-                report["summary"]["cost"] = cost_summary
-            if cache_summary:
-                report["summary"]["cache_summary"] = cache_summary
-            json_reporter.write(report, resolved)
+            json_reporter.write(json_report, resolved)
             click.echo(f"JSON report written to {resolved}")
 
     if not suite_result.all_passed:
@@ -330,6 +360,7 @@ def watch(eval_file, runs, concurrency, filter_pattern, model, verbose, log_leve
     from skill_evaluator.watch import watch_loop
 
     load_dotenv()
+    _check_api_key()
     _setup_logging(log_level)
 
     exit_code = watch_loop(
@@ -348,37 +379,14 @@ def _run_suite_and_build_report(eval_file, model_override=None):
     """Load, execute, and build a JSON report for a suite. Returns (suite, report, suite_result)."""
     from dotenv import load_dotenv
 
-    from skill_evaluator.reporting.cost import build_cache_summary, build_cost_summary
-    from skill_evaluator.reporting.json_report import JsonReporter
-
     load_dotenv()
 
-    try:
-        suite = load_eval_suite(eval_file)
-    except ConfigLoadError as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(2)
-
-    config = resolve_config(suite.defaults, cli_model=model_override)
-
-    try:
-        suite_result = execute_suite(Path(eval_file), suite, config)
-    except (SkillParseError, PrefixLoadError) as e:
-        click.echo(f"Error: {e}", err=True)
-        sys.exit(2)
-
-    cost_summary = build_cost_summary(suite_result, config.model)
-    cache_summary = build_cache_summary(suite_result, config.model)
+    suite, _config, suite_result, cost_summary, cache_summary, report = _load_and_execute(
+        eval_file, cli_model=model_override,
+    )
 
     reporter = ConsoleReporter(verbose=False)
     reporter.report(suite_result, cost_summary=cost_summary, cache_summary=cache_summary)
-
-    json_reporter = JsonReporter()
-    report = json_reporter.build_report(suite, suite_result, model=config.model)
-    if cost_summary:
-        report["summary"]["cost"] = cost_summary
-    if cache_summary:
-        report["summary"]["cache_summary"] = cache_summary
 
     return suite, report, suite_result
 

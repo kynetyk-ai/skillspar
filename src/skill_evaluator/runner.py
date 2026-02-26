@@ -13,6 +13,7 @@ from typing import Any
 
 from anthropic import Anthropic
 
+from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
 from skill_evaluator.assertions.evaluator import evaluate_assertions
 from skill_evaluator.config.loader import resolve_skill_path
 from skill_evaluator.config.schema import (
@@ -25,16 +26,17 @@ from skill_evaluator.config.schema import (
 )
 from skill_evaluator.engine.context import ContextFileError, build_context_messages
 from skill_evaluator.engine.conversation import build_skill_messages
-from skill_evaluator.engine.multi_turn import MultiTurnExecutor
+from skill_evaluator.engine.multi_turn import MultiTurnExecutionError, MultiTurnExecutor
 from skill_evaluator.engine.prefix import (
     MINIMUM_CACHE_TOKEN_THRESHOLD,
     PrefixLoadError,
     estimate_prefix_tokens,
     load_prefix_messages,
 )
-from skill_evaluator.engine.single_turn import SingleTurnExecutor
+from skill_evaluator.engine.single_turn import ExecutionError, SingleTurnExecutor
 from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 from skill_evaluator.skill.parser import parse_skill
+from skill_evaluator.tools.matcher import NoMatchError
 from skill_evaluator.tools.registry import resolve_tools
 
 logger = logging.getLogger(__name__)
@@ -63,18 +65,7 @@ class SuiteRunner:
         self.suite = suite
         # Build ResolvedConfig from suite.defaults when not provided (backward compat)
         if config is None:
-            config = ResolvedConfig(
-                system_prompt=suite.defaults.system_prompt,
-                model=suite.defaults.model,
-                judge_model=suite.defaults.judge_model,
-                max_tokens=suite.defaults.max_tokens,
-                temperature=suite.defaults.temperature,
-                runs=suite.defaults.runs,
-                pass_threshold=suite.defaults.pass_threshold,
-                max_retries=suite.defaults.max_retries,
-                concurrency=suite.defaults.concurrency,
-                enable_caching=suite.defaults.enable_caching,
-            )
+            config = ResolvedConfig(**suite.defaults.model_dump())
         self.config = config
         self.client = client or Anthropic(max_retries=self.config.max_retries)
 
@@ -259,65 +250,11 @@ class SuiteRunner:
         suite_tools: list[dict[str, Any]],
     ) -> TestResult:
         """Execute a single-turn test and evaluate its assertions."""
-        try:
-            context_messages = self._resolve_context_for(test)
-        except ContextFileError as e:
-            from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
+        def make_executor(system_prompt, input_config):
+            executor = SingleTurnExecutor(self.client, self.config)
+            return executor.execute(system_prompt, input_config, tools=suite_tools or None)
 
-            return TestResult(
-                test_name=test.name,
-                assertion_results=[
-                    AssertionResult(
-                        status=AssertionStatus.ERROR,
-                        assertion_type="context",
-                        message=f"Context file error: {e}",
-                    )
-                ],
-            )
-
-        skill_cache = self._skill_cache_control()
-        skill_messages = build_skill_messages(skill_body, cache_control=skill_cache) if skill_body else []
-        prefix_messages = list(self._prefix_messages)
-        test_messages = list(test.input.messages)
-        if not skill_body:  # baseline run — strip skill-only messages
-            test_messages = [m for m in test_messages if not m.skill_only]
-        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, test_messages)
-        input_config = InputConfig(messages=merged_messages)
-
-        system_prompt = self._build_system_prompt()
-        executor = SingleTurnExecutor(self.client, self.config)
-        t0 = time.monotonic()
-        try:
-            trace = executor.execute(
-                system_prompt, input_config, tools=suite_tools or None
-            )
-        except Exception as e:
-            from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
-
-            return TestResult(
-                test_name=test.name,
-                assertion_results=[
-                    AssertionResult(
-                        status=AssertionStatus.ERROR,
-                        assertion_type="execution",
-                        message=f"Execution failed: {e}",
-                    )
-                ],
-                duration_seconds=time.monotonic() - t0,
-            )
-        duration = time.monotonic() - t0
-
-        assertion_results = evaluate_assertions(
-            test.assertions, trace,
-            client=self.client,
-            judge_model=self.config.judge_model or self.config.model,
-        )
-        return TestResult(
-            test_name=test.name,
-            assertion_results=assertion_results,
-            trace=trace,
-            duration_seconds=duration,
-        )
+        return self._run_test(test, skill_body, suite_tools, make_executor)
 
     def _run_multi_turn(
         self,
@@ -326,11 +263,29 @@ class SuiteRunner:
         suite_tools: list[dict[str, Any]],
     ) -> TestResult:
         """Execute a multi-turn test and evaluate its assertions."""
+        def make_executor(system_prompt, input_config):
+            executor = MultiTurnExecutor(
+                client=self.client,
+                config=self.config,
+                tools=suite_tools or None,
+                tool_responses=test.tool_responses,
+                max_turns=test.max_turns,
+            )
+            return executor.execute(system_prompt, input_config)
+
+        return self._run_test(test, skill_body, suite_tools, make_executor)
+
+    def _run_test(
+        self,
+        test: SingleTurnTest | MultiTurnTest,
+        skill_body: str,
+        suite_tools: list[dict[str, Any]],
+        execute_fn: Any,
+    ) -> TestResult:
+        """Shared pipeline: context → messages → execute → evaluate assertions."""
         try:
             context_messages = self._resolve_context_for(test)
         except ContextFileError as e:
-            from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
-
             return TestResult(
                 test_name=test.name,
                 assertion_results=[
@@ -352,20 +307,10 @@ class SuiteRunner:
         input_config = InputConfig(messages=merged_messages)
 
         system_prompt = self._build_system_prompt()
-        executor = MultiTurnExecutor(
-            client=self.client,
-            config=self.config,
-            tools=suite_tools or None,
-            tool_responses=test.tool_responses,
-            max_turns=test.max_turns,
-        )
-
         t0 = time.monotonic()
         try:
-            trace = executor.execute(system_prompt, input_config)
-        except Exception as e:
-            from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
-
+            trace = execute_fn(system_prompt, input_config)
+        except (ExecutionError, MultiTurnExecutionError, NoMatchError) as e:
             return TestResult(
                 test_name=test.name,
                 assertion_results=[

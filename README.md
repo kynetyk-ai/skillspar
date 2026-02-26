@@ -1,10 +1,12 @@
 # Skillspar: Quantitative Testing Harness for Agent Skills
 
-Define test scenarios in YAML, run them against the API, and measure how well your skill "steers" behavior — across edits, models, and context conditions.
+Define test scenarios in YAML, run them against the API, and measure how well your Agent Skill "steers" behavior — across edits, models, and context conditions.
 
 ## Why Test Skills?
 
-Agent skills are prompt documents that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar currently evaluates steer on tool-using Anthropic models using API calls. The approach could extend to other agents with similar skill injection patterns.
+Agent skills are prompt documents that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar currently evaluates steer on tool-using Anthropic models using API calls. 
+
+The underlying pattern — injecting instructional text into model context to specialize behavior — is shared across major coding agents including [Claude Code](https://code.claude.com/docs/en/skills), [Cursor](https://docs.cursor.com/context/rules-for-ai), and [Windsurf](https://docs.windsurf.com/windsurf/cascade/memories), and is converging into an [open standard](https://openai.github.io/agent-skills-spec/).
 
 ## How It Works
 
@@ -30,8 +32,6 @@ The typical workflow:
 # 2. Install the CLI (runs generated test suites)
 pip install git+https://github.com/kynetyk-ai/skillspar.git
 ```
-
-A SessionStart hook will remind you to install the CLI if it's missing.
 
 For development mode (from a clone of this repo):
 
@@ -77,7 +77,7 @@ skillspar run my-skill.eval.yaml
 
 - **Watch mode** — `skillspar watch` monitors the eval file, skill file, and all referenced context files, re-running on any change and diffing against the previous iteration. See [Watch Mode](docs/cli-reference.md#watch-mode).
 
-- **Baseline comparison** — `baseline: true` runs each test with and without the skill to quantify the skill's contribution. Messages marked `skill_only: true` are excluded from baseline runs, so you can include skill-specific reference material without inflating the baseline. See [Baseline Testing](docs/cli-reference.md#baseline-testing).
+- **Baseline comparison** — `baseline: true` runs each test with and without the skill to quantify the skill's contribution. Messages marked `skill_only: true` are excluded from baseline runs, so you can include skill-specific reference material without inflating the baseline. As a side benefit, baseline testing can surface unexpected behavioral shifts introduced by third-party skills — a practical defense against [prompt injection in agent skill supply chains](https://snyk.io/blog/toxicskills-malicious-ai-agent-skills-clawhub/). See [Baseline Testing](docs/cli-reference.md#baseline-testing).
 
 - **Mid-conversation testing** — `conversation_prefix` prepends simulated prior conversation, and `skill_position` (`top` or `bottom`) controls where the skill is injected relative to it — test worst-case dilution or just-in-time injection. See [Mid-conversation Testing](docs/cli-reference.md#mid-conversation-testing).
 

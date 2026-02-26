@@ -12,6 +12,8 @@ from skill_evaluator.config.schema import ConversationPrefixConfig, MessageConfi
 
 logger = logging.getLogger(__name__)
 
+# Anthropic API minimum for prompt caching — prefixes shorter than this
+# token count will not be cached, even with cache_control markers set.
 MINIMUM_CACHE_TOKEN_THRESHOLD = 1024
 
 

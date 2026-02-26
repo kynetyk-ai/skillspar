@@ -262,7 +262,8 @@ tests:
 
     def test_execution_error_handled(self, tmp_path, mock_anthropic_client):
         eval_file = self._make_suite_files(tmp_path)
-        mock_anthropic_client.messages.create.side_effect = Exception("Network error")
+        from anthropic import APIConnectionError
+        mock_anthropic_client.messages.create.side_effect = APIConnectionError(request=None)
 
         suite = load_eval_suite(eval_file)
         runner = SuiteRunner(eval_file, suite, client=mock_anthropic_client)

@@ -60,6 +60,16 @@ class ToolCalledTimesAssertion(BaseModel):
     max: int | None = None
     exactly: int | None = None
 
+    @model_validator(mode="after")
+    def validate_bounds(self) -> ToolCalledTimesAssertion:
+        if self.min is None and self.max is None and self.exactly is None:
+            raise ValueError("At least one of 'min', 'max', or 'exactly' is required")
+        if self.exactly is not None and (self.min is not None or self.max is not None):
+            raise ValueError("'exactly' cannot be combined with 'min' or 'max'")
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("'min' must be <= 'max'")
+        return self
+
 
 class ToolArgsMatchAssertion(BaseModel):
     type: Literal["tool_args_match"]
@@ -78,6 +88,16 @@ class TurnCountAssertion(BaseModel):
     min: int | None = None
     max: int | None = None
     exactly: int | None = None
+
+    @model_validator(mode="after")
+    def validate_bounds(self) -> TurnCountAssertion:
+        if self.min is None and self.max is None and self.exactly is None:
+            raise ValueError("At least one of 'min', 'max', or 'exactly' is required")
+        if self.exactly is not None and (self.min is not None or self.max is not None):
+            raise ValueError("'exactly' cannot be combined with 'min' or 'max'")
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("'min' must be <= 'max'")
+        return self
 
 
 class LLMJudgeAssertion(BaseModel):
@@ -315,19 +335,9 @@ class EvalSuite(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ResolvedConfig(BaseModel, frozen=True):
+class ResolvedConfig(SuiteDefaults, frozen=True):
     """Frozen config produced by merging defaults → env vars → YAML → CLI flags."""
 
-    system_prompt: str = ""
-    model: str = "claude-sonnet-4-5-20250929"
-    judge_model: str = ""
-    max_tokens: int = 4096
-    temperature: float = 0
-    runs: int = 1
-    pass_threshold: float = 1.0
-    max_retries: int = 2
-    concurrency: int = 1
-    enable_caching: bool = True
     output: str | None = None
     output_format: str = "json"
     verbose: bool = False

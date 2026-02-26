@@ -136,13 +136,14 @@ class TestMultiTurnExecutor:
 
     def test_api_error_raises(self, mock_anthropic_client):
         """API errors are wrapped in MultiTurnExecutionError."""
-        mock_anthropic_client.messages.create.side_effect = Exception("timeout")
+        from anthropic import APIConnectionError
+        mock_anthropic_client.messages.create.side_effect = APIConnectionError(request=None)
 
         executor = MultiTurnExecutor(
             client=mock_anthropic_client,
             config=_config(),
         )
-        with pytest.raises(MultiTurnExecutionError, match="timeout"):
+        with pytest.raises(MultiTurnExecutionError, match="API call failed"):
             executor.execute("You are helpful.", _input())
 
     def test_tools_passed_to_api(self, mock_anthropic_client, mock_anthropic_message):

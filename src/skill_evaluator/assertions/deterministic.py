@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 
 from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
 from skill_evaluator.config.schema import (
@@ -39,11 +40,15 @@ def check_output_contains(assertion: OutputContainsAssertion, trace: Trace) -> A
             assertion_type="output_contains",
             message=f"Output contains '{assertion.value}'",
         )
+    details: dict[str, Any] = {"output": text[:500]}
+    if len(text) > 500:
+        details["truncated"] = True
+        details["full_length"] = len(text)
     return AssertionResult(
         status=AssertionStatus.FAILED,
         assertion_type="output_contains",
         message=f"Output does not contain '{assertion.value}'",
-        details={"output": text[:500]},
+        details=details,
     )
 
 
@@ -57,11 +62,15 @@ def check_output_not_contains(
             assertion_type="output_not_contains",
             message=f"Output does not contain '{assertion.value}'",
         )
+    details: dict[str, Any] = {"output": text[:500]}
+    if len(text) > 500:
+        details["truncated"] = True
+        details["full_length"] = len(text)
     return AssertionResult(
         status=AssertionStatus.FAILED,
         assertion_type="output_not_contains",
         message=f"Output unexpectedly contains '{assertion.value}'",
-        details={"output": text[:500]},
+        details=details,
     )
 
 
@@ -75,11 +84,15 @@ def check_output_matches_regex(
             assertion_type="output_matches_regex",
             message=f"Output matches pattern '{assertion.pattern}'",
         )
+    details: dict[str, Any] = {"output": text[:500]}
+    if len(text) > 500:
+        details["truncated"] = True
+        details["full_length"] = len(text)
     return AssertionResult(
         status=AssertionStatus.FAILED,
         assertion_type="output_matches_regex",
         message=f"Output does not match pattern '{assertion.pattern}'",
-        details={"output": text[:500]},
+        details=details,
     )
 
 

@@ -22,6 +22,10 @@ htmlcov/
 # Results
 results/
 
+# Claude
+.claude/
+
+
 # OS
 .DS_Store
 

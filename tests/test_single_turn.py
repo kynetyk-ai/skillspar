@@ -56,7 +56,8 @@ class TestSingleTurnExecutor:
         assert call_kwargs["temperature"] == 0.5
 
     def test_api_error_raises_execution_error(self, mock_anthropic_client):
-        mock_anthropic_client.messages.create.side_effect = Exception("API timeout")
+        from anthropic import APIConnectionError
+        mock_anthropic_client.messages.create.side_effect = APIConnectionError(request=None)
         executor = SingleTurnExecutor(mock_anthropic_client, ResolvedConfig())
         input_config = InputConfig(
             messages=[MessageConfig(role="user", content="Hi")]
