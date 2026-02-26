@@ -43,6 +43,18 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 - **Feature additions**: When a phase milestone is reached, re-evaluate the README and any user-facing docs for accuracy.
 - **Skill package coherence**: The `/evaluate-skill` skill package (SKILL.md + references/) is a first-class deliverable. Treat it like code — if the framework changes, the skill must stay in sync.
 
+## Claude Code Plugin
+
+This repo also serves as a Claude Code plugin root:
+
+- `.claude-plugin/plugin.json` — plugin manifest
+- `skills/evaluate-skill/` — the `/evaluate-skill` skill (auto-discovered by the plugin system)
+- `hooks/hooks.json` — `SessionStart` hook that checks for CLI installation
+
+Test the plugin locally: `claude --plugin-dir .`
+
+When the version in `pyproject.toml` changes, update `.claude-plugin/plugin.json` to match.
+
 ## Roadmap
 
-See ROADMAP.md. Phases 1–4F complete. Next: Phase 5 (release readiness & PyPI).
+See ROADMAP.md. Phases 1–4G complete. Next: Phase 5 (release readiness & PyPI).

@@ -172,6 +172,22 @@ schema and feature set.
 **Milestone**: `skillspar run examples/` runs all suites with an aggregated summary, and
 documentation covers the full feature set. ✅
 
+## Phase 4G: Claude Code Plugin Packaging ✅
+
+Package the repo as a Claude Code plugin so users can install skillspar's `/evaluate-skill`
+skill directly into their Claude Code environment. The plugin overlays onto the existing repo
+structure — no restructuring needed.
+
+- [x] `.claude-plugin/plugin.json` manifest (name, version synced with pyproject.toml, metadata)
+- [x] `hooks/hooks.json` with `SessionStart` hook: warn if `skillspar` CLI is not installed,
+      with `pip install git+https://github.com/kynetyk-ai/skillspar.git` instructions
+- [x] Portable paths in `/evaluate-skill` SKILL.md (validate script path relative to skill dir)
+- [x] README plugin installation section (development mode via `--plugin-dir`, CLI install via GitHub)
+- [x] CLAUDE.md plugin structure documentation
+
+**Milestone**: `claude --plugin-dir .` loads the plugin, `/skillspar:evaluate-skill` is
+discoverable and functional. ✅
+
 ## Phase 5: Release Readiness + PyPI (Future)
 
 CI/CD, packaging metadata, error handling polish, and code quality enforcement — the gate before public release.

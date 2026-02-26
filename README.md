@@ -62,10 +62,33 @@ tests:
 
 Use `skill_position` to control where the skill is injected relative to the prefix — `top` (default) places the skill before the prefix to simulate maximum dilution, `bottom` places it after for a more favorable test.
 
+## Installation
+
+### As a Claude Code Plugin
+
+Install the `/evaluate-skill` skill directly into Claude Code:
+
+```bash
+# Development mode (from a clone of this repo)
+claude --plugin-dir ./path/to/skillspar
+```
+
+Then install the CLI to run generated test suites:
+
+```bash
+pip install git+https://github.com/kynetyk-ai/skillspar.git
+```
+
+### As a Python Package
+
+```bash
+pip install git+https://github.com/kynetyk-ai/skillspar.git
+```
+
 ## Quick Start
 
 ```bash
-pip install skillspar
+pip install git+https://github.com/kynetyk-ai/skillspar.git
 ```
 
 Create a test suite (`my-skill.eval.yaml`):
