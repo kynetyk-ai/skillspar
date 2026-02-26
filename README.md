@@ -117,6 +117,21 @@ pytest
 
 See [ROADMAP.md](ROADMAP.md) for the phased implementation plan.
 
+## Acknowledgements
+
+Skillspar is built on these open source libraries:
+
+| Package | License |
+|---------|---------|
+| [anthropic](https://github.com/anthropics/anthropic-sdk-python) | MIT |
+| [click](https://github.com/pallets/click) | BSD-3-Clause |
+| [jsonpath-ng](https://github.com/h2non/jsonpath-ng) | Apache-2.0 |
+| [pydantic](https://github.com/pydantic/pydantic) | MIT |
+| [PyYAML](https://pyyaml.org/) | MIT |
+| [python-dotenv](https://github.com/theskumar/python-dotenv) | BSD-3-Clause |
+| [rich](https://github.com/Textualize/rich) | MIT |
+| [watchfiles](https://github.com/samuelcolvin/watchfiles) | MIT |
+
 ## License
 
 [MIT](LICENSE)
