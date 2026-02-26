@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 DEFAULT_SNAPSHOT_DIR = Path(".skillspar/snapshots")
@@ -57,7 +57,7 @@ def save_snapshot(report: dict, snapshot_dir: Path | None = None) -> Path:
 
     suite_name = report.get("suite", "unknown")
     slug = _slugify(suite_name)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     filename = f"{slug}_{timestamp}.json"
 
     path = resolved_dir / filename
@@ -126,9 +126,7 @@ def list_snapshots(
     return snapshots
 
 
-def find_latest_snapshot(
-    suite_name: str, snapshot_dir: Path | None = None
-) -> Path | None:
+def find_latest_snapshot(suite_name: str, snapshot_dir: Path | None = None) -> Path | None:
     """Return the path of the most recent snapshot for a suite, or None."""
     snaps = list_snapshots(suite_name=suite_name, snapshot_dir=snapshot_dir)
     return snaps[0].path if snaps else None

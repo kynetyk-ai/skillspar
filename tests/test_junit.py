@@ -126,7 +126,11 @@ class TestJunitReporter:
             test_results=[
                 TestRunGroup(
                     test_name="multi",
-                    runs=[_passing_result("multi"), _passing_result("multi"), _failing_result("multi")],
+                    runs=[
+                        _passing_result("multi"),
+                        _passing_result("multi"),
+                        _failing_result("multi"),
+                    ],
                 ),
             ],
         )

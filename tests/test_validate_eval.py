@@ -18,10 +18,10 @@ from validate_eval import (  # noqa: E402
     validate_eval_file,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _write_yaml(tmp_path: Path, data: dict) -> Path:
     """Write a dict as YAML to a temp file and return the path."""
@@ -86,7 +86,10 @@ class TestSuggestTypo:
         assert _suggest_typo("zzzzzzz", ["response", "request"]) is None
 
     def test_case_insensitive(self):
-        assert _suggest_typo("Output_Contains", ["output_contains", "output_not_contains"]) == "output_contains"
+        assert (
+            _suggest_typo("Output_Contains", ["output_contains", "output_not_contains"])
+            == "output_contains"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -96,12 +99,16 @@ class TestSuggestTypo:
 
 class TestDiscriminatorErrors:
     def test_invalid_test_type(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single",
-            "name": "bad",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single",
+                    "name": "bad",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
@@ -110,12 +117,16 @@ class TestDiscriminatorErrors:
         assert "multi_turn" in msg
 
     def test_invalid_assertion_type(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "bad assertion",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [{"type": "contains", "value": "x"}],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "bad assertion",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"type": "contains", "value": "x"}],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
@@ -137,46 +148,62 @@ class TestMissingFields:
         assert "missing required field" in msg.lower() or "missing" in msg.lower()
 
     def test_missing_input(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "no input",
-            "assertions": [{"type": "stop_reason", "value": "end_turn"}],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "no input",
+                    "assertions": [{"type": "stop_reason", "value": "end_turn"}],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "input" in msg.lower()
 
     def test_missing_test_name(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "missing" in msg.lower()
 
     def test_missing_assertion_type(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "no assertion type",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [{"value": "hello"}],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "no assertion type",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"value": "hello"}],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "type" in msg.lower()
 
     def test_missing_messages_in_input(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "no messages",
-            "input": {},
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "no messages",
+                    "input": {},
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
@@ -184,12 +211,16 @@ class TestMissingFields:
 
     def test_missing_assertion_required_field(self, tmp_path):
         """output_contains requires a 'value' field."""
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "missing value",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [{"type": "output_contains"}],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "missing value",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"type": "output_contains"}],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
@@ -217,24 +248,32 @@ class TestInvalidValues:
         assert "pass_threshold" in msg.lower()
 
     def test_invalid_regex(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "bad regex",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [{"type": "output_matches_regex", "pattern": "[invalid"}],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "bad regex",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"type": "output_matches_regex", "pattern": "[invalid"}],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "regex" in msg.lower() or "pattern" in msg.lower()
 
     def test_invalid_message_role(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "bad role",
-            "input": {"messages": [{"role": "system", "content": "Hi"}]},
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "bad role",
+                    "input": {"messages": [{"role": "system", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
@@ -262,43 +301,57 @@ class TestInvalidValues:
 
 class TestToolResponseErrors:
     def test_both_response_and_responses(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "multi_turn",
-            "name": "both",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "tool_responses": [{
-                "match": "*",
-                "response": {"content": "a"},
-                "responses": [{"content": "b"}],
-            }],
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "multi_turn",
+                    "name": "both",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "tool_responses": [
+                        {
+                            "match": "*",
+                            "response": {"content": "a"},
+                            "responses": [{"content": "b"}],
+                        }
+                    ],
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "not both" in msg.lower()
 
     def test_neither_response_nor_responses(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "multi_turn",
-            "name": "neither",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "tool_responses": [{"match": "*"}],
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "multi_turn",
+                    "name": "neither",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "tool_responses": [{"match": "*"}],
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "required" in msg.lower()
 
     def test_empty_responses_list(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "multi_turn",
-            "name": "empty",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "tool_responses": [{"match": "*", "responses": []}],
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "multi_turn",
+                    "name": "empty",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "tool_responses": [{"match": "*", "responses": []}],
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
@@ -312,22 +365,22 @@ class TestToolResponseErrors:
 
 class TestConversationPrefixErrors:
     def test_prefix_not_ending_with_assistant(self, tmp_path):
-        raw = _minimal_suite(conversation_prefix={
-            "messages": [{"role": "user", "content": "Hi"}]
-        })
+        raw = _minimal_suite(conversation_prefix={"messages": [{"role": "user", "content": "Hi"}]})
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
         assert "assistant" in msg.lower()
 
     def test_both_messages_and_file(self, tmp_path):
-        raw = _minimal_suite(conversation_prefix={
-            "messages": [
-                {"role": "user", "content": "Hi"},
-                {"role": "assistant", "content": "Hello"},
-            ],
-            "file": "./prefix.yaml",
-        })
+        raw = _minimal_suite(
+            conversation_prefix={
+                "messages": [
+                    {"role": "user", "content": "Hi"},
+                    {"role": "assistant", "content": "Hello"},
+                ],
+                "file": "./prefix.yaml",
+            }
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert not ok
@@ -355,15 +408,21 @@ class TestConversationPrefixErrors:
 
 class TestSemanticChecks:
     def test_tool_result_without_matching_id(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "orphan tool_result",
-            "input": {"messages": [
-                {"role": "user", "content": "Hi"},
-                {"role": "tool_result", "tool_use_id": "tc_999", "content": "OK"},
-            ]},
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "orphan tool_result",
+                    "input": {
+                        "messages": [
+                            {"role": "user", "content": "Hi"},
+                            {"role": "tool_result", "tool_use_id": "tc_999", "content": "OK"},
+                        ]
+                    },
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert ok  # schema is valid, but we get warnings
@@ -371,19 +430,29 @@ class TestSemanticChecks:
         assert "warning" in msg.lower()
 
     def test_tool_result_with_matching_id_no_warning(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "matched tool_result",
-            "input": {"messages": [
-                {"role": "user", "content": "Do something"},
-                {"role": "assistant", "content": "OK", "tool_calls": [
-                    {"id": "tc_001", "name": "Write", "input": {"path": "/x"}}
-                ]},
-                {"role": "tool_result", "tool_use_id": "tc_001", "content": "Done"},
-                {"role": "user", "content": "Great"},
-            ]},
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "matched tool_result",
+                    "input": {
+                        "messages": [
+                            {"role": "user", "content": "Do something"},
+                            {
+                                "role": "assistant",
+                                "content": "OK",
+                                "tool_calls": [
+                                    {"id": "tc_001", "name": "Write", "input": {"path": "/x"}}
+                                ],
+                            },
+                            {"role": "tool_result", "tool_use_id": "tc_001", "content": "Done"},
+                            {"role": "user", "content": "Great"},
+                        ]
+                    },
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert ok
@@ -392,12 +461,14 @@ class TestSemanticChecks:
     def test_undeclared_tool_in_assertion(self, tmp_path):
         raw = _minimal_suite(
             tools=[{"builtin": "Read"}],
-            tests=[{
-                "type": "single_turn",
-                "name": "uses Write",
-                "input": {"messages": [{"role": "user", "content": "Hi"}]},
-                "assertions": [{"type": "tool_called", "tool": "Write"}],
-            }],
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "uses Write",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"type": "tool_called", "tool": "Write"}],
+                }
+            ],
         )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
@@ -408,12 +479,14 @@ class TestSemanticChecks:
     def test_undeclared_tool_in_sequence(self, tmp_path):
         raw = _minimal_suite(
             tools=[{"builtin": "Read"}],
-            tests=[{
-                "type": "single_turn",
-                "name": "sequence with unknown",
-                "input": {"messages": [{"role": "user", "content": "Hi"}]},
-                "assertions": [{"type": "tool_sequence", "tools": ["Read", "Execute"]}],
-            }],
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "sequence with unknown",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"type": "tool_sequence", "tools": ["Read", "Execute"]}],
+                }
+            ],
         )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
@@ -423,36 +496,48 @@ class TestSemanticChecks:
 
     def test_no_tools_declared_skips_check(self, tmp_path):
         """When no tools: section exists, don't warn about tool assertions."""
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "tool assert without tools section",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [{"type": "tool_called", "tool": "Anything"}],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "tool assert without tools section",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"type": "tool_called", "tool": "Anything"}],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert ok
         assert "not declared" not in msg
 
     def test_multi_turn_without_tool_responses(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "multi_turn",
-            "name": "no tool_responses",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "multi_turn",
+                    "name": "no tool_responses",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert ok
         assert "multi_turn test with no tool_responses" in msg
 
     def test_short_llm_judge_criteria(self, tmp_path):
-        raw = _minimal_suite(tests=[{
-            "type": "single_turn",
-            "name": "short judge",
-            "input": {"messages": [{"role": "user", "content": "Hi"}]},
-            "assertions": [{"type": "llm_judge", "criteria": "good"}],
-        }])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "short judge",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [{"type": "llm_judge", "criteria": "good"}],
+                }
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert ok
@@ -475,24 +560,26 @@ class TestSuccessOutput:
         assert "1 tests" in msg or "1 test" in msg
 
     def test_success_shows_assertion_distribution(self, tmp_path):
-        raw = _minimal_suite(tests=[
-            {
-                "type": "single_turn",
-                "name": "test 1",
-                "input": {"messages": [{"role": "user", "content": "Hi"}]},
-                "assertions": [
-                    {"type": "output_contains", "value": "x"},
-                    {"type": "output_contains", "value": "y"},
-                    {"type": "stop_reason", "value": "end_turn"},
-                ],
-            },
-            {
-                "type": "single_turn",
-                "name": "test 2",
-                "input": {"messages": [{"role": "user", "content": "Hello"}]},
-                "assertions": [{"type": "output_contains", "value": "z"}],
-            },
-        ])
+        raw = _minimal_suite(
+            tests=[
+                {
+                    "type": "single_turn",
+                    "name": "test 1",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [
+                        {"type": "output_contains", "value": "x"},
+                        {"type": "output_contains", "value": "y"},
+                        {"type": "stop_reason", "value": "end_turn"},
+                    ],
+                },
+                {
+                    "type": "single_turn",
+                    "name": "test 2",
+                    "input": {"messages": [{"role": "user", "content": "Hello"}]},
+                    "assertions": [{"type": "output_contains", "value": "z"}],
+                },
+            ]
+        )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
         assert ok
@@ -530,12 +617,14 @@ class TestEdgeCases:
         raw = {
             "skill": "./SKILL.md",
             # missing suite
-            "tests": [{
-                "type": "invalid_type",
-                "name": "broken",
-                "input": {"messages": [{"role": "user", "content": "Hi"}]},
-                "assertions": [],
-            }],
+            "tests": [
+                {
+                    "type": "invalid_type",
+                    "name": "broken",
+                    "input": {"messages": [{"role": "user", "content": "Hi"}]},
+                    "assertions": [],
+                }
+            ],
         }
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)
@@ -546,18 +635,20 @@ class TestEdgeCases:
     def test_valid_multi_turn_passes(self, tmp_path):
         raw = _minimal_suite(
             tools=[{"builtin": "Read"}, {"builtin": "Write"}],
-            tests=[{
-                "type": "multi_turn",
-                "name": "read then write",
-                "input": {"messages": [{"role": "user", "content": "Read and modify"}]},
-                "tool_responses": [
-                    {"match": {"tool": "Read"}, "response": {"content": "file contents"}},
-                    {"match": {"tool": "Write"}, "response": {"content": "ok"}},
-                ],
-                "assertions": [
-                    {"type": "tool_sequence", "tools": ["Read", "Write"]},
-                ],
-            }],
+            tests=[
+                {
+                    "type": "multi_turn",
+                    "name": "read then write",
+                    "input": {"messages": [{"role": "user", "content": "Read and modify"}]},
+                    "tool_responses": [
+                        {"match": {"tool": "Read"}, "response": {"content": "file contents"}},
+                        {"match": {"tool": "Write"}, "response": {"content": "ok"}},
+                    ],
+                    "assertions": [
+                        {"type": "tool_sequence", "tools": ["Read", "Write"]},
+                    ],
+                }
+            ],
         )
         p = _write_yaml(tmp_path, raw)
         ok, msg = validate_eval_file(p)

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from rich.console import Console
@@ -68,6 +68,7 @@ def _outcome_row(outcome: SuiteOutcome) -> tuple[str, str, str]:
     if outcome.error is not None:
         return "[yellow]ERROR[/yellow]", "—", "—"
 
+    assert outcome.suite_result is not None
     sr = outcome.suite_result
     total = len(sr.test_results)
     passed = sr.passed_count
@@ -105,13 +106,18 @@ def build_multi_suite_json_report(result: MultiSuiteResult) -> dict[str, Any]:
 
     for outcome in result.outcomes:
         if outcome.error is not None:
-            suites.append({
-                "eval_file": str(outcome.eval_file),
-                "suite": outcome.suite_name,
-                "error": outcome.error,
-            })
+            suites.append(
+                {
+                    "eval_file": str(outcome.eval_file),
+                    "suite": outcome.suite_name,
+                    "error": outcome.error,
+                }
+            )
             continue
 
+        assert outcome.suite is not None
+        assert outcome.suite_result is not None
+        assert outcome.config is not None
         report = json_reporter.build_report(
             outcome.suite, outcome.suite_result, model=outcome.config.model
         )
@@ -137,7 +143,7 @@ def build_multi_suite_json_report(result: MultiSuiteResult) -> dict[str, Any]:
     return {
         "schema_version": "1",
         "type": "multi_suite",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "suites": suites,
         "summary": summary,
     }
@@ -152,7 +158,8 @@ def build_multi_suite_junit_report(result: MultiSuiteResult) -> ET.Element:
         if outcome.error is not None:
             # Represent errored suites as a single failed testsuite
             ts = ET.SubElement(
-                root, "testsuite",
+                root,
+                "testsuite",
                 name=outcome.suite_name,
                 tests="0",
                 failures="0",
@@ -164,6 +171,8 @@ def build_multi_suite_junit_report(result: MultiSuiteResult) -> ET.Element:
             continue
 
         # Build per-suite JUnit and merge its children into the root
+        assert outcome.suite is not None
+        assert outcome.suite_result is not None
         suite_root = junit_reporter.build_report(outcome.suite, outcome.suite_result)
         for child in suite_root:
             root.append(child)

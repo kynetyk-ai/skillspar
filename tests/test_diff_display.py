@@ -38,7 +38,9 @@ class TestDisplayDiff:
                     status_changed=True,
                 ),
             ],
-            summary=DiffSummary(total_tests=1, regressions=1, improvements=0, steer_erosions=0, unchanged=0),
+            summary=DiffSummary(
+                total_tests=1, regressions=1, improvements=0, steer_erosions=0, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()
@@ -62,7 +64,9 @@ class TestDisplayDiff:
                     status_changed=True,
                 ),
             ],
-            summary=DiffSummary(total_tests=1, regressions=0, improvements=1, steer_erosions=0, unchanged=0),
+            summary=DiffSummary(
+                total_tests=1, regressions=0, improvements=1, steer_erosions=0, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()
@@ -88,7 +92,9 @@ class TestDisplayDiff:
                     steer_eroded=True,
                 ),
             ],
-            summary=DiffSummary(total_tests=1, regressions=0, improvements=0, steer_erosions=1, unchanged=0),
+            summary=DiffSummary(
+                total_tests=1, regressions=0, improvements=0, steer_erosions=1, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()
@@ -103,7 +109,9 @@ class TestDisplayDiff:
             before_timestamp="t1",
             after_timestamp="t2",
             skill_hash_changed=True,
-            summary=DiffSummary(total_tests=0, regressions=0, improvements=0, steer_erosions=0, unchanged=0),
+            summary=DiffSummary(
+                total_tests=0, regressions=0, improvements=0, steer_erosions=0, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()
@@ -119,7 +127,9 @@ class TestDisplayDiff:
             skill_hash_changed=False,
             added_tests=["new-test"],
             removed_tests=["old-test"],
-            summary=DiffSummary(total_tests=0, regressions=0, improvements=0, steer_erosions=0, unchanged=0),
+            summary=DiffSummary(
+                total_tests=0, regressions=0, improvements=0, steer_erosions=0, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()
@@ -153,7 +163,9 @@ class TestDisplayDiff:
                     ],
                 ),
             ],
-            summary=DiffSummary(total_tests=1, regressions=1, improvements=0, steer_erosions=0, unchanged=0),
+            summary=DiffSummary(
+                total_tests=1, regressions=1, improvements=0, steer_erosions=0, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()
@@ -173,7 +185,9 @@ class TestDisplayDiff:
                 TestDiff("a", 1.0, 0.5, -0.5, True),
                 TestDiff("b", 0.5, 1.0, 0.5, True),
             ],
-            summary=DiffSummary(total_tests=2, regressions=1, improvements=1, steer_erosions=0, unchanged=0),
+            summary=DiffSummary(
+                total_tests=2, regressions=1, improvements=1, steer_erosions=0, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()
@@ -188,7 +202,9 @@ class TestDisplayDiff:
             before_timestamp="t1",
             after_timestamp="t2",
             skill_hash_changed=False,
-            summary=DiffSummary(total_tests=0, regressions=0, improvements=0, steer_erosions=0, unchanged=0),
+            summary=DiffSummary(
+                total_tests=0, regressions=0, improvements=0, steer_erosions=0, unchanged=0
+            ),
         )
         display_diff(diff, console=console)
         output = buf.getvalue()

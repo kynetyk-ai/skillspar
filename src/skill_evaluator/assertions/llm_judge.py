@@ -88,7 +88,9 @@ def check_llm_judge(
     user_prompt = _build_judge_prompt(trace, assertion.criteria)
     logger.debug(
         "LLM judge: model=%s, criteria='%s', prompt_length=%d",
-        model, assertion.criteria[:80], len(user_prompt),
+        model,
+        assertion.criteria[:80],
+        len(user_prompt),
     )
 
     try:
@@ -122,7 +124,9 @@ def check_llm_judge(
             details={"raw_response": response_text[:500]},
         )
 
-    logger.debug("LLM judge verdict: %s, reasoning='%s'", "PASS" if passed else "FAIL", reasoning[:80] if reasoning else "")
+    verdict_str = "PASS" if passed else "FAIL"
+    reason_str = reasoning[:80] if reasoning else ""
+    logger.debug("LLM judge verdict: %s, reasoning='%s'", verdict_str, reason_str)
     return AssertionResult(
         status=AssertionStatus.PASSED if passed else AssertionStatus.FAILED,
         assertion_type="llm_judge",

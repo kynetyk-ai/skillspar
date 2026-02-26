@@ -48,8 +48,10 @@ class TestEvaluateAssertions:
             LLMJudgeAssertion(type="llm_judge", criteria="Is it friendly?"),
         ]
         results = evaluate_assertions(
-            assertions, simple_text_trace,
-            client=mock_anthropic_client, judge_model="claude-haiku-3",
+            assertions,
+            simple_text_trace,
+            client=mock_anthropic_client,
+            judge_model="claude-haiku-3",
         )
         assert len(results) == 1
         assert results[0].status == AssertionStatus.PASSED
@@ -66,8 +68,10 @@ class TestEvaluateAssertions:
             LLMJudgeAssertion(type="llm_judge", criteria="Is it detailed?"),
         ]
         results = evaluate_assertions(
-            assertions, simple_text_trace,
-            client=mock_anthropic_client, judge_model="claude-haiku-3",
+            assertions,
+            simple_text_trace,
+            client=mock_anthropic_client,
+            judge_model="claude-haiku-3",
         )
         assert len(results) == 1
         assert results[0].status == AssertionStatus.FAILED

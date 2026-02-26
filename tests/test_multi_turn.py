@@ -44,9 +44,7 @@ class TestMultiTurnExecutor:
             tool_uses=[{"id": "tc_001", "name": "Read", "input": {"file_path": "/f.txt"}}],
             stop_reason="tool_use",
         )
-        final_response = mock_anthropic_message(
-            text="Here's the content.", stop_reason="end_turn"
-        )
+        final_response = mock_anthropic_message(text="Here's the content.", stop_reason="end_turn")
         mock_anthropic_client.messages.create.side_effect = [tool_response, final_response]
 
         tool_responses = [
@@ -137,6 +135,7 @@ class TestMultiTurnExecutor:
     def test_api_error_raises(self, mock_anthropic_client):
         """API errors are wrapped in MultiTurnExecutionError."""
         from anthropic import APIConnectionError
+
         mock_anthropic_client.messages.create.side_effect = APIConnectionError(request=None)
 
         executor = MultiTurnExecutor(
@@ -214,7 +213,10 @@ class TestMultiTurnExecutor:
         )
         final_msg = mock_anthropic_message(text="All done.", stop_reason="end_turn")
         mock_anthropic_client.messages.create.side_effect = [
-            read_msg_1, read_msg_2, read_msg_3, final_msg,
+            read_msg_1,
+            read_msg_2,
+            read_msg_3,
+            final_msg,
         ]
 
         tool_responses = [

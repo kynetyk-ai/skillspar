@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Any
 
-from anthropic import APIError, Anthropic
+from anthropic import Anthropic, APIError
 
 from skill_evaluator.config.schema import InputConfig, ResolvedConfig, ToolResponseConfig
 from skill_evaluator.engine.conversation import build_messages
@@ -58,7 +58,9 @@ class MultiTurnExecutor:
 
         logger.debug(
             "Multi-turn loop: model=%s, max_turns=%d, response_rules=%d",
-            self.config.model, self.max_turns, len(self.tool_responses),
+            self.config.model,
+            self.max_turns,
+            len(self.tool_responses),
         )
 
         for turn_num in range(self.max_turns):
@@ -84,7 +86,10 @@ class MultiTurnExecutor:
 
             logger.debug(
                 "Turn %d: stop_reason=%s, messages=%d, tool_calls=%d",
-                turn_num, turn.stop_reason, len(messages), len(turn.tool_calls),
+                turn_num,
+                turn.stop_reason,
+                len(messages),
+                len(turn.tool_calls),
             )
 
             if turn.stop_reason != "tool_use":
@@ -96,23 +101,27 @@ class MultiTurnExecutor:
                 if block.type == "text":
                     assistant_content.append({"type": "text", "text": block.text})
                 elif block.type == "tool_use":
-                    assistant_content.append({
-                        "type": "tool_use",
-                        "id": block.id,
-                        "name": block.name,
-                        "input": block.input,
-                    })
+                    assistant_content.append(
+                        {
+                            "type": "tool_use",
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input,
+                        }
+                    )
             messages.append({"role": "assistant", "content": assistant_content})
 
             # Match tool calls to scripted responses
             tool_result_blocks: list[dict[str, Any]] = []
             for tc in turn.tool_calls:
                 matched = match_tool_response(tc, self.tool_responses, call_counts)
-                tool_result_blocks.append({
-                    "type": "tool_result",
-                    "tool_use_id": tc.id,
-                    "content": _serialize_tool_result(matched),
-                })
+                tool_result_blocks.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": tc.id,
+                        "content": _serialize_tool_result(matched),
+                    }
+                )
             messages.append({"role": "user", "content": tool_result_blocks})
 
         logger.info("Multi-turn loop complete after %d turn(s)", len(trace.turns))

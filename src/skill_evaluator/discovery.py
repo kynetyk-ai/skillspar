@@ -43,9 +43,7 @@ def resolve_eval_paths(raw_paths: tuple[str, ...]) -> list[Path]:
                 found.add(m.resolve())
 
     if not found:
-        raise DiscoveryError(
-            f"No .eval.yaml files found matching: {', '.join(raw_paths)}"
-        )
+        raise DiscoveryError(f"No .eval.yaml files found matching: {', '.join(raw_paths)}")
 
     result = sorted(found)
     logger.info("Resolved %d eval file(s)", len(result))

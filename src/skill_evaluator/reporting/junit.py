@@ -42,23 +42,24 @@ class JunitReporter:
         group_duration = group.duration_seconds
         if group_duration is not None:
             ts_attrs["time"] = f"{group_duration:.3f}"
-        ts = ET.SubElement(root, "testsuite", **ts_attrs)
+        ts = ET.SubElement(root, "testsuite", attrib=ts_attrs)
 
         if group.is_multi_run:
             for i, run in enumerate(group.runs):
                 tc_attrs: dict[str, str] = {"name": f"{group.test_name} [run {i}]"}
                 if run.duration_seconds is not None:
                     tc_attrs["time"] = f"{run.duration_seconds:.3f}"
-                tc = ET.SubElement(ts, "testcase", **tc_attrs)
+                tc = ET.SubElement(ts, "testcase", attrib=tc_attrs)
                 self._add_assertion_elements(tc, run)
         else:
             tc_attrs = {"name": group.test_name}
             if group.runs[0].duration_seconds is not None:
                 tc_attrs["time"] = f"{group.runs[0].duration_seconds:.3f}"
-            tc = ET.SubElement(ts, "testcase", **tc_attrs)
+            tc = ET.SubElement(ts, "testcase", attrib=tc_attrs)
             self._add_assertion_elements(tc, group.runs[0])
 
     def _add_baseline_group(self, root: ET.Element, group: TestRunGroup) -> None:
+        assert group.baseline_runs is not None
         baseline_runs = group.baseline_runs
         failures = sum(1 for r in baseline_runs if not r.passed)
         errors = 0
@@ -77,27 +78,29 @@ class JunitReporter:
         }
         if bl_durations:
             ts_attrs["time"] = f"{sum(bl_durations):.3f}"
-        ts = ET.SubElement(root, "testsuite", **ts_attrs)
+        ts = ET.SubElement(root, "testsuite", attrib=ts_attrs)
 
         for i, run in enumerate(baseline_runs):
             tc_attrs: dict[str, str] = {"name": f"{group.test_name} [baseline run {i}]"}
             if run.duration_seconds is not None:
                 tc_attrs["time"] = f"{run.duration_seconds:.3f}"
-            tc = ET.SubElement(ts, "testcase", **tc_attrs)
+            tc = ET.SubElement(ts, "testcase", attrib=tc_attrs)
             self._add_assertion_elements(tc, run)
 
     def _add_assertion_elements(self, testcase: ET.Element, run) -> None:
         for ar in run.assertion_results:
             if ar.status == AssertionStatus.FAILED:
                 failure = ET.SubElement(
-                    testcase, "failure",
+                    testcase,
+                    "failure",
                     message=ar.message,
                     type=ar.assertion_type,
                 )
                 failure.text = ar.message
             elif ar.status == AssertionStatus.ERROR:
                 error = ET.SubElement(
-                    testcase, "error",
+                    testcase,
+                    "error",
                     message=ar.message,
                 )
                 error.text = ar.message

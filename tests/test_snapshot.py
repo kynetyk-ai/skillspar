@@ -99,9 +99,10 @@ class TestListSnapshots:
     def test_lists_all_snapshots(self, tmp_path):
         # Write files directly with distinct names to avoid timestamp collision
         for i in range(3):
-            report = _make_report(suite_name="suite", timestamp=f"2025-01-0{i+1}T00:00:00+00:00")
-            path = tmp_path / f"suite_2025010{i+1}-000000.json"
+            report = _make_report(suite_name="suite", timestamp=f"2025-01-0{i + 1}T00:00:00+00:00")
+            path = tmp_path / f"suite_2025010{i + 1}-000000.json"
             import json
+
             with open(path, "w") as f:
                 json.dump(report, f)
         result = list_snapshots(snapshot_dir=tmp_path)
@@ -125,7 +126,9 @@ class TestListSnapshots:
         assert len(result) == 1
 
     def test_snapshot_info_fields(self, tmp_path):
-        report = _make_report(suite_name="Test", run_id="abc-123", timestamp="2025-06-15T12:00:00+00:00")
+        report = _make_report(
+            suite_name="Test", run_id="abc-123", timestamp="2025-06-15T12:00:00+00:00"
+        )
         save_snapshot(report, snapshot_dir=tmp_path)
         snaps = list_snapshots(snapshot_dir=tmp_path)
         assert len(snaps) == 1

@@ -64,7 +64,8 @@ class MultiSuiteResult:
     @property
     def failed_suites(self) -> int:
         return sum(
-            1 for o in self.outcomes
+            1
+            for o in self.outcomes
             if not o.passed and o.error is None and o.suite_result is not None
         )
 
@@ -159,7 +160,8 @@ def _run_single(
         return SuiteOutcome(eval_file=eval_file, suite=suite, config=config, error=str(e))
     except Exception as e:
         logger.warning("Unexpected error in %s: %s", eval_file, e)
-        return SuiteOutcome(eval_file=eval_file, suite=suite, config=config, error=f"Unexpected error: {e}")
+        msg = f"Unexpected error: {e}"
+        return SuiteOutcome(eval_file=eval_file, suite=suite, config=config, error=msg)
 
     cost_summary = build_cost_summary(suite_result, config.model)
     cache_summary = build_cache_summary(suite_result, config.model)

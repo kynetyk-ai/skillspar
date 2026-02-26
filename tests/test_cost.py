@@ -56,14 +56,18 @@ class TestEstimateCost:
 
     def test_custom_pricing_file(self, tmp_path):
         pricing_file = tmp_path / "pricing.json"
-        pricing_file.write_text(json.dumps({
-            "custom-model": {
-                "input": 1.0,
-                "output": 2.0,
-                "cache_write_multiplier": 1.5,
-                "cache_read_multiplier": 0.2,
-            }
-        }))
+        pricing_file.write_text(
+            json.dumps(
+                {
+                    "custom-model": {
+                        "input": 1.0,
+                        "output": 2.0,
+                        "cache_write_multiplier": 1.5,
+                        "cache_read_multiplier": 0.2,
+                    }
+                }
+            )
+        )
         with patch.dict("os.environ", {"SKILLSPAR_PRICING_FILE": str(pricing_file)}):
             usage = TokenUsage(input_tokens=1_000_000, output_tokens=1_000_000)
             cost = estimate_cost(usage, "custom-model")
@@ -73,12 +77,16 @@ class TestEstimateCost:
 
     def test_custom_pricing_overrides_builtin(self, tmp_path):
         pricing_file = tmp_path / "pricing.json"
-        pricing_file.write_text(json.dumps({
-            "claude-sonnet-4-5-20250929": {
-                "input": 100.0,
-                "output": 200.0,
-            }
-        }))
+        pricing_file.write_text(
+            json.dumps(
+                {
+                    "claude-sonnet-4-5-20250929": {
+                        "input": 100.0,
+                        "output": 200.0,
+                    }
+                }
+            )
+        )
         with patch.dict("os.environ", {"SKILLSPAR_PRICING_FILE": str(pricing_file)}):
             usage = TokenUsage(input_tokens=1_000_000, output_tokens=1_000_000)
             cost = estimate_cost(usage, "claude-sonnet-4-5-20250929")
@@ -104,13 +112,15 @@ class TestBuildCostSummary:
         from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 
         trace = Trace()
-        trace.add_turn(Turn(
-            text_output="hi",
-            tool_calls=[],
-            stop_reason="end_turn",
-            usage=TokenUsage(input_tokens=1000, output_tokens=500),
-            raw_response=None,
-        ))
+        trace.add_turn(
+            Turn(
+                text_output="hi",
+                tool_calls=[],
+                stop_reason="end_turn",
+                usage=TokenUsage(input_tokens=1000, output_tokens=500),
+                raw_response=None,
+            )
+        )
         result = SuiteResult(
             suite_name="test",
             test_results=[
@@ -120,7 +130,9 @@ class TestBuildCostSummary:
                         TestResult(
                             test_name="t",
                             assertion_results=[
-                                AssertionResult(status=AssertionStatus.PASSED, assertion_type="x", message="ok"),
+                                AssertionResult(
+                                    status=AssertionStatus.PASSED, assertion_type="x", message="ok"
+                                ),
                             ],
                             trace=trace,
                         )

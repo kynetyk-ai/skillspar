@@ -45,8 +45,7 @@ def match_tool_response(
             return response
     logger.warning("No matching tool response for tool call '%s'", tool_call.name)
     raise NoMatchError(
-        f"No matching tool response for tool call '{tool_call.name}' "
-        f"(id={tool_call.id})"
+        f"No matching tool response for tool call '{tool_call.name}' (id={tool_call.id})"
     )
 
 

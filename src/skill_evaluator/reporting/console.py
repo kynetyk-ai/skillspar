@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
 
@@ -96,7 +96,9 @@ class TestRunGroup:
         """Sum of run durations, or None if no runs have timing data."""
         durations = [r.duration_seconds for r in self.runs if r.duration_seconds is not None]
         if self.baseline_runs:
-            durations += [r.duration_seconds for r in self.baseline_runs if r.duration_seconds is not None]
+            durations += [
+                r.duration_seconds for r in self.baseline_runs if r.duration_seconds is not None
+            ]
         return sum(durations) if durations else None
 
     def to_dict(self) -> dict:
@@ -118,9 +120,7 @@ class TestRunGroup:
                 "baseline": self.baseline_runs is not None,
             },
             "summary": summary,
-            "runs": [
-                {"run_index": i, **r.to_dict()} for i, r in enumerate(self.runs)
-            ],
+            "runs": [{"run_index": i, **r.to_dict()} for i, r in enumerate(self.runs)],
         }
         if self.baseline_runs is not None:
             bl_total = len(self.baseline_runs)
@@ -197,8 +197,7 @@ class ConsoleReporter:
             self.console.print(f"[green bold]{passed}/{total} tests passed[/green bold]")
         else:
             self.console.print(
-                f"[red bold]{failed}/{total} tests failed[/red bold], "
-                f"{passed}/{total} passed"
+                f"[red bold]{failed}/{total} tests failed[/red bold], {passed}/{total} passed"
             )
 
         if self.verbose:
@@ -215,7 +214,8 @@ class ConsoleReporter:
             baseline = cost_summary.get("baseline_cost_usd")
             if baseline:
                 self.console.print(
-                    f"[dim]Cost: ${total:.2f} (skill: ${skill:.2f}, baseline: ${baseline:.2f})[/dim]"
+                    f"[dim]Cost: ${total:.2f} "
+                    f"(skill: ${skill:.2f}, baseline: ${baseline:.2f})[/dim]"
                 )
             else:
                 self.console.print(f"[dim]Cost: ${total:.2f}[/dim]")
@@ -225,9 +225,7 @@ class ConsoleReporter:
             writes = cache_summary.get("cache_creation_input_tokens", 0)
             savings = cache_summary.get("estimated_savings_usd")
             savings_str = f" (~${savings:.2f} saved)" if savings else ""
-            self.console.print(
-                f"[dim]Cache: {reads:,} reads, {writes:,} writes{savings_str}[/dim]"
-            )
+            self.console.print(f"[dim]Cache: {reads:,} reads, {writes:,} writes{savings_str}[/dim]")
 
     def _report_single_run(self, group: TestRunGroup) -> None:
         test = group.runs[0]
@@ -248,9 +246,7 @@ class ConsoleReporter:
         total = len(group.runs)
         pc = group.pass_count
         if group.passed:
-            self.console.print(
-                f"  [green]✓[/green] {group.test_name}  {pc}/{total} passed"
-            )
+            self.console.print(f"  [green]✓[/green] {group.test_name}  {pc}/{total} passed")
         else:
             threshold_pct = int(group.pass_threshold * 100)
             self.console.print(
@@ -260,9 +256,7 @@ class ConsoleReporter:
         if group.baseline_runs is not None:
             bl_total = len(group.baseline_runs)
             bl_pass = group.baseline_pass_count
-            self.console.print(
-                f"    [dim]baseline: {bl_pass}/{bl_total} passed[/dim]"
-            )
+            self.console.print(f"    [dim]baseline: {bl_pass}/{bl_total} passed[/dim]")
 
         if self.verbose:
             for i, run in enumerate(group.runs):
@@ -279,6 +273,4 @@ class ConsoleReporter:
             label = result.status.value.upper()
             atype = result.assertion_type.replace("[", r"\[")
             msg = result.message.replace("[", r"\[")
-            self.console.print(
-                f"{pad}{icon} \\[{atype}] {label}: {msg}"
-            )
+            self.console.print(f"{pad}{icon} \\[{atype}] {label}: {msg}")

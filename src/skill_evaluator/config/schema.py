@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import re
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
-
 
 # ---------------------------------------------------------------------------
 # Assertions
 # ---------------------------------------------------------------------------
+
 
 class StopReasonAssertion(BaseModel):
     type: Literal["stop_reason"]
@@ -52,6 +52,7 @@ class ToolNotCalledAssertion(BaseModel):
 
 
 # Phase 2+ stubs — parse but don't execute yet
+
 
 class ToolCalledTimesAssertion(BaseModel):
     type: Literal["tool_called_times"]
@@ -107,19 +108,17 @@ class LLMJudgeAssertion(BaseModel):
 
 
 AssertionConfig = Annotated[
-    Union[
-        StopReasonAssertion,
-        OutputContainsAssertion,
-        OutputNotContainsAssertion,
-        OutputMatchesRegexAssertion,
-        ToolCalledAssertion,
-        ToolNotCalledAssertion,
-        ToolCalledTimesAssertion,
-        ToolArgsMatchAssertion,
-        ToolSequenceAssertion,
-        TurnCountAssertion,
-        LLMJudgeAssertion,
-    ],
+    StopReasonAssertion
+    | OutputContainsAssertion
+    | OutputNotContainsAssertion
+    | OutputMatchesRegexAssertion
+    | ToolCalledAssertion
+    | ToolNotCalledAssertion
+    | ToolCalledTimesAssertion
+    | ToolArgsMatchAssertion
+    | ToolSequenceAssertion
+    | TurnCountAssertion
+    | LLMJudgeAssertion,
     Field(discriminator="type"),
 ]
 
@@ -127,6 +126,7 @@ AssertionConfig = Annotated[
 # ---------------------------------------------------------------------------
 # Messages / Input
 # ---------------------------------------------------------------------------
+
 
 class ToolCallConfig(BaseModel):
     id: str
@@ -151,6 +151,7 @@ class InputConfig(BaseModel):
 # Tools (forward-compat)
 # ---------------------------------------------------------------------------
 
+
 class BuiltinToolConfig(BaseModel):
     builtin: str
 
@@ -161,12 +162,13 @@ class CustomToolConfig(BaseModel):
     input_schema: dict[str, Any]
 
 
-ToolConfig = Union[BuiltinToolConfig, CustomToolConfig]
+ToolConfig = BuiltinToolConfig | CustomToolConfig
 
 
 # ---------------------------------------------------------------------------
 # Tool responses (forward-compat for multi-turn)
 # ---------------------------------------------------------------------------
+
 
 class ToolMatchConfig(BaseModel):
     tool: str | None = None
@@ -185,13 +187,14 @@ class ToolResponseConfig(BaseModel):
             raise ValueError("Specify either 'response' or 'responses', not both")
         if not has_response and not has_responses:
             raise ValueError("One of 'response' or 'responses' is required")
-        if has_responses and len(self.responses) == 0:
+        if has_responses and len(self.responses) == 0:  # type: ignore[arg-type]
             raise ValueError("'responses' must not be empty")
         return self
 
     def get_response(self, call_index: int = 0) -> dict[str, Any]:
         if self.response is not None:
             return self.response
+        assert self.responses is not None
         clamped = min(call_index, len(self.responses) - 1)
         return self.responses[clamped]
 
@@ -199,6 +202,7 @@ class ToolResponseConfig(BaseModel):
 # ---------------------------------------------------------------------------
 # Context Files
 # ---------------------------------------------------------------------------
+
 
 class ContextFileConfig(BaseModel):
     file: str
@@ -221,6 +225,7 @@ class ContextFileConfig(BaseModel):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class SingleTurnTest(BaseModel):
     type: Literal["single_turn"]
@@ -247,7 +252,7 @@ class MultiTurnTest(BaseModel):
 
 
 TestConfig = Annotated[
-    Union[SingleTurnTest, MultiTurnTest],
+    SingleTurnTest | MultiTurnTest,
     Field(discriminator="type"),
 ]
 
@@ -255,6 +260,7 @@ TestConfig = Annotated[
 # ---------------------------------------------------------------------------
 # Suite
 # ---------------------------------------------------------------------------
+
 
 class SuiteDefaults(BaseModel):
     system_prompt: str = ""  # Baseline agent persona, constant across skill/baseline runs
@@ -313,6 +319,7 @@ class ConversationPrefixConfig(BaseModel):
         if not has_messages and not has_file:
             raise ValueError("One of 'messages' or 'file' is required")
         if has_messages:
+            assert self.messages is not None
             if len(self.messages) == 0:
                 raise ValueError("'messages' must not be empty")
             if self.messages[-1].role != "assistant":
@@ -335,7 +342,7 @@ class EvalSuite(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-class ResolvedConfig(SuiteDefaults, frozen=True):
+class ResolvedConfig(SuiteDefaults, frozen=True):  # type: ignore[misc]
     """Frozen config produced by merging defaults → env vars → YAML → CLI flags."""
 
     output: str | None = None

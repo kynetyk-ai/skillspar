@@ -7,9 +7,12 @@ description: Analyze a SKILL.md and generate a .eval.yaml test suite with baseli
 
 This skill produces `.eval.yaml` test suites for the Skillspar framework. Given a target SKILL.md, the task is to extract testable behavioral claims and generate tests that measure the skill's **steer** — its marginal behavioral impact over the base model.
 
-## A: Analysis Protocol
+## A: Develop the Test Suite
+> **IMPORTANT**: Follow this protocol carefully. **ALWAYS** enter plan mode and get user approval before writing the test suite. **NEVER** finalize or run a .eval.yaml without user sign-off on the plan.
 
 1. **Read the target SKILL.md** using the Read tool. Parse its frontmatter (`name`, `description`) and body.
+   - If the SKILL.md has obvious gaps (missing sections, vague descriptions), flag these to the user and ask for clarification before proceeding.
+   - If there are reference files mentioned (code snippets, docs, example conversations), read those too and use them as context for claim extraction.
 2. **Extract behavioral claims** from the body. A claim is any statement about what the skill should or should not do. Classify each as:
    - **Deterministic** — verifiable by string, regex, or tool-use checks (output format, required keywords, tool-use patterns, workflow sequences, forbidden behaviors)
    - **Subjective** — requires judgment about quality, tone, or completeness
@@ -21,9 +24,18 @@ This skill produces `.eval.yaml` test suites for the Skillspar framework. Given 
 4. **Offer a coverage strategy.** Ask the user:
    - **Comprehensive**: one test per claim, full coverage
    - **Focused**: collaborate to identify the 5–8 most critical behavioral assertions — the claims that represent the skill's core steer vs. nice-to-haves. Recommend which claims are highest-value and let the user decide what to keep.
-5. **Generate the `.eval.yaml`** after approval, following the schema in `references/eval-schema-reference.md`.
+5. **Generate the `.eval.yaml`** after approval, following the schema in `references/eval-schema-reference.md` and assertion syntax in `references/assertion-types-reference.md`. Use the Write tool to create the file, and any context files needed for the tests.
+6. **Validate the suite** using `python scripts/validate_eval.py <path-to-eval.yaml>`. Fix any errors and re-run until it passes.
+7. **Summarize the suite**: total test count, claims covered with their tests, any untestable claims with explanation, and assertion type distribution.
 
-## B: Assertion Selection
+## B: Run the Test Suite
+> **IMPORTANT**: Running a test suite will consume API credits. Always review get explicit approval before running.
+1. Instruct the user to set their `ANTHROPIC_API_KEY` in the environment or a `.env` file if not already done.
+2. **Run the suite** Unless instructed otherwise, specify json output and include the `--save-responses` flag to capture model outputs for error analysis and future reference.
+
+# Quick Start Guide
+
+## Assertion Selection
 
 Use this table to pick the right assertion type for each claim:
 
@@ -42,14 +54,14 @@ Use this table to pick the right assertion type for each claim:
 
 Subjective claims (tone, helpfulness, thoroughness) must use `llm_judge`. Never approximate them with `output_contains` or `output_matches_regex`.
 
-## C: Test Design Rules
+## Test Design Rules
 
 - Set `baseline: true` on every test. Disable only when testing behavior the base model never exhibits; add a comment explaining why.
 - Default to `single_turn`. Use `multi_turn` only when the claim requires sequential tool calls with intermediate results.
 - Provide reference material as `tool_result` messages in conversation history, not as user-message context. Models weight information differently by source.
 - Consider adding a `conversation_prefix` when the skill is likely to be used mid-conversation (most skills are). A prefix simulates prior context to test whether the skill's steer persists after context dilution. This is optional — only suggest it if the skill's use case implies mid-session activation.
 
-## D: Conventions
+## Conventions
 
 1. **Verb-first test names**: `"produces structured output with severity labels"`, not `"test_1"`.
 2. **One test per claim** so failures are diagnostic.
@@ -57,7 +69,7 @@ Subjective claims (tone, helpfulness, thoroughness) must use `llm_judge`. Never 
 4. **Realistic, varied user messages** — don't reuse the same input across tests.
 5. **Progressive discovery via tool results** — model reference material (code, research, skill package docs) as `tool_result` messages rather than inline user context. A Read result is the simplest form; this lets the model encounter information the way it would in real usage.
 
-## E: Output
+## Output
 
 1. **Write the `.eval.yaml`** using the Write tool, placed alongside or near the target SKILL.md.
 2. **Write any context files** referenced by the suite.
@@ -68,7 +80,7 @@ Subjective claims (tone, helpfulness, thoroughness) must use `llm_judge`. Never 
    This checks both schema correctness and common semantic mistakes (mismatched tool_result ids, undeclared tools in assertions, multi_turn without tool_responses, etc.). If validation fails, fix the reported errors and re-run until it passes. The error messages explain exactly what's wrong and how to fix it.
 4. **Summarize**: total test count, claims covered with their tests, any untestable claims with explanation, and assertion type distribution.
 
-## References
+# References
 
 Before writing the `.eval.yaml`, read these reference files for the full schema and assertion syntax:
 - `references/eval-schema-reference.md` — complete `.eval.yaml` structure, fields, and defaults

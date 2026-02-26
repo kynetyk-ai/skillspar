@@ -10,10 +10,10 @@ from skill_evaluator.engine.context import (
     resolve_context_file,
 )
 
-
 # ---------------------------------------------------------------------------
 # resolve_context_file
 # ---------------------------------------------------------------------------
+
 
 class TestResolveContextFile:
     def test_relative_path_resolved(self, tmp_path):
@@ -46,6 +46,7 @@ class TestResolveContextFile:
 # ---------------------------------------------------------------------------
 # read_context_file
 # ---------------------------------------------------------------------------
+
 
 class TestReadContextFile:
     def test_full_file(self, tmp_path):
@@ -102,6 +103,7 @@ class TestReadContextFile:
 # ---------------------------------------------------------------------------
 # build_context_messages
 # ---------------------------------------------------------------------------
+
 
 class TestBuildContextMessages:
     def test_single_file(self, tmp_path):

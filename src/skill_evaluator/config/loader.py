@@ -82,7 +82,10 @@ def resolve_config(
     )
     logger.debug(
         "Resolved config: model=%s, runs=%d, concurrency=%d, output=%s",
-        config.model, config.runs, config.concurrency, config.output,
+        config.model,
+        config.runs,
+        config.concurrency,
+        config.output,
     )
     return config
 
@@ -120,6 +123,8 @@ def load_eval_suite(path: str | Path) -> EvalSuite:
 
     logger.info(
         "Loaded suite '%s' (%d tests, model=%s)",
-        suite.suite, len(suite.tests), suite.defaults.model,
+        suite.suite,
+        len(suite.tests),
+        suite.defaults.model,
     )
     return suite

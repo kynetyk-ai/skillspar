@@ -1,6 +1,7 @@
 """Tests for config/loader.py — YAML loading."""
 
 import pytest
+from pydantic import ValidationError
 
 from skill_evaluator.config.loader import (
     ConfigLoadError,
@@ -131,7 +132,10 @@ class TestResolveConfig:
     def test_cli_overrides_take_precedence(self):
         defaults = SuiteDefaults(runs=1, concurrency=1, model="yaml-model")
         config = resolve_config(
-            defaults, cli_runs=5, cli_concurrency=3, cli_model="cli-model",
+            defaults,
+            cli_runs=5,
+            cli_concurrency=3,
+            cli_model="cli-model",
         )
         assert config.runs == 5
         assert config.concurrency == 3
@@ -159,7 +163,9 @@ class TestResolveConfig:
     def test_verbose_and_filter(self):
         defaults = SuiteDefaults()
         config = resolve_config(
-            defaults, cli_verbose=True, cli_filter_pattern="greeting",
+            defaults,
+            cli_verbose=True,
+            cli_filter_pattern="greeting",
         )
         assert config.verbose is True
         assert config.filter_pattern == "greeting"
@@ -167,5 +173,5 @@ class TestResolveConfig:
     def test_config_is_frozen(self):
         defaults = SuiteDefaults()
         config = resolve_config(defaults)
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             config.runs = 10

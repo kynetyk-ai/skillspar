@@ -15,7 +15,6 @@ from skill_evaluator.config.schema import (
     SingleTurnTest,
     SuiteDefaults,
 )
-from skill_evaluator.engine.prefix import PrefixLoadError
 from skill_evaluator.multi_suite import MultiSuiteResult, SuiteOutcome, run_suites
 from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 from skill_evaluator.skill.parser import SkillParseError
@@ -99,10 +98,20 @@ class TestSuiteOutcome:
 
 class TestMultiSuiteResult:
     def test_all_passed(self):
-        result = MultiSuiteResult(outcomes=[
-            SuiteOutcome(eval_file=Path("a.yaml"), suite=_make_suite(), suite_result=_make_suite_result(passed=True)),
-            SuiteOutcome(eval_file=Path("b.yaml"), suite=_make_suite(), suite_result=_make_suite_result(passed=True)),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                SuiteOutcome(
+                    eval_file=Path("a.yaml"),
+                    suite=_make_suite(),
+                    suite_result=_make_suite_result(passed=True),
+                ),
+                SuiteOutcome(
+                    eval_file=Path("b.yaml"),
+                    suite=_make_suite(),
+                    suite_result=_make_suite_result(passed=True),
+                ),
+            ]
+        )
         assert result.all_passed is True
         assert result.total_suites == 2
         assert result.passed_suites == 2
@@ -110,19 +119,35 @@ class TestMultiSuiteResult:
         assert result.error_suites == 0
 
     def test_one_failed(self):
-        result = MultiSuiteResult(outcomes=[
-            SuiteOutcome(eval_file=Path("a.yaml"), suite=_make_suite(), suite_result=_make_suite_result(passed=True)),
-            SuiteOutcome(eval_file=Path("b.yaml"), suite=_make_suite(), suite_result=_make_suite_result(passed=False)),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                SuiteOutcome(
+                    eval_file=Path("a.yaml"),
+                    suite=_make_suite(),
+                    suite_result=_make_suite_result(passed=True),
+                ),
+                SuiteOutcome(
+                    eval_file=Path("b.yaml"),
+                    suite=_make_suite(),
+                    suite_result=_make_suite_result(passed=False),
+                ),
+            ]
+        )
         assert result.all_passed is False
         assert result.passed_suites == 1
         assert result.failed_suites == 1
 
     def test_error_suite(self):
-        result = MultiSuiteResult(outcomes=[
-            SuiteOutcome(eval_file=Path("a.yaml"), suite=_make_suite(), suite_result=_make_suite_result(passed=True)),
-            SuiteOutcome(eval_file=Path("b.yaml"), error="bad config"),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                SuiteOutcome(
+                    eval_file=Path("a.yaml"),
+                    suite=_make_suite(),
+                    suite_result=_make_suite_result(passed=True),
+                ),
+                SuiteOutcome(eval_file=Path("b.yaml"), error="bad config"),
+            ]
+        )
         assert result.all_passed is False
         assert result.error_suites == 1
         assert result.has_config_errors is True

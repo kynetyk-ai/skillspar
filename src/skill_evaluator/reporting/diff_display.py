@@ -13,9 +13,7 @@ def display_diff(diff: SnapshotDiff, console: Console | None = None) -> None:
 
     # Header
     console.print()
-    console.print(
-        f"[bold]Diff:[/bold] {diff.before_timestamp} -> {diff.after_timestamp}"
-    )
+    console.print(f"[bold]Diff:[/bold] {diff.before_timestamp} -> {diff.after_timestamp}")
     if diff.skill_hash_changed:
         console.print("[yellow]Warning: skill file hash changed between snapshots[/yellow]")
     console.print()
@@ -55,8 +53,7 @@ def display_diff(diff: SnapshotDiff, console: Console | None = None) -> None:
         # Assertion flips
         for flip in td.assertion_flips:
             console.print(
-                f"    [dim]{flip.assertion_type}: "
-                f"{flip.before_status} -> {flip.after_status}[/dim]"
+                f"    [dim]{flip.assertion_type}: {flip.before_status} -> {flip.after_status}[/dim]"
             )
 
     # Added / removed tests
@@ -79,9 +76,11 @@ def display_diff(diff: SnapshotDiff, console: Console | None = None) -> None:
     if s.regressions:
         parts.append(f"[red]{s.regressions} regression{'s' if s.regressions != 1 else ''}[/red]")
     if s.improvements:
-        parts.append(f"[green]{s.improvements} improvement{'s' if s.improvements != 1 else ''}[/green]")
+        suffix = "s" if s.improvements != 1 else ""
+        parts.append(f"[green]{s.improvements} improvement{suffix}[/green]")
     if s.steer_erosions:
-        parts.append(f"[yellow]{s.steer_erosions} steer erosion{'s' if s.steer_erosions != 1 else ''}[/yellow]")
+        suffix = "s" if s.steer_erosions != 1 else ""
+        parts.append(f"[yellow]{s.steer_erosions} steer erosion{suffix}[/yellow]")
     if s.unchanged:
         parts.append(f"{s.unchanged} unchanged")
 

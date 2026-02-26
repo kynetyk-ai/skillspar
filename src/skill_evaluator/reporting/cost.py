@@ -86,9 +86,7 @@ def estimate_cost(usage: TokenUsage, model: str) -> float | None:
     return cost
 
 
-def estimate_cache_savings(
-    cache_read_tokens: int, model: str
-) -> float | None:
+def estimate_cache_savings(cache_read_tokens: int, model: str) -> float | None:
     """Estimate savings from cache reads vs. full-price input tokens.
 
     Savings = cache_read_tokens * input_rate * (1 - cache_read_multiplier) / 1M

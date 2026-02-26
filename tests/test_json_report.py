@@ -36,27 +36,31 @@ def _make_suite(**overrides):
 
 def _make_trace(text="Hello!", input_tokens=100, output_tokens=50):
     trace = Trace()
-    trace.add_turn(Turn(
-        text_output=text,
-        tool_calls=[],
-        stop_reason="end_turn",
-        usage=TokenUsage(input_tokens=input_tokens, output_tokens=output_tokens),
-        raw_response=object(),  # non-serializable, should be excluded
-    ))
+    trace.add_turn(
+        Turn(
+            text_output=text,
+            tool_calls=[],
+            stop_reason="end_turn",
+            usage=TokenUsage(input_tokens=input_tokens, output_tokens=output_tokens),
+            raw_response=object(),  # non-serializable, should be excluded
+        )
+    )
     return trace
 
 
 def _make_trace_with_tools():
     trace = Trace()
-    trace.add_turn(Turn(
-        text_output="I'll read that for you.",
-        tool_calls=[
-            ToolCall(id="tc_001", name="Read", input={"file_path": "/foo.py"}),
-        ],
-        stop_reason="tool_use",
-        usage=TokenUsage(input_tokens=200, output_tokens=100),
-        raw_response=None,
-    ))
+    trace.add_turn(
+        Turn(
+            text_output="I'll read that for you.",
+            tool_calls=[
+                ToolCall(id="tc_001", name="Read", input={"file_path": "/foo.py"}),
+            ],
+            stop_reason="tool_use",
+            usage=TokenUsage(input_tokens=200, output_tokens=100),
+            raw_response=None,
+        )
+    )
     return trace
 
 
@@ -64,7 +68,9 @@ def _pass_result(name="test", trace=None):
     return TestResult(
         test_name=name,
         assertion_results=[
-            AssertionResult(status=AssertionStatus.PASSED, assertion_type="stop_reason", message="ok"),
+            AssertionResult(
+                status=AssertionStatus.PASSED, assertion_type="stop_reason", message="ok"
+            ),
         ],
         trace=trace,
     )

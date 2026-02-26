@@ -3,7 +3,6 @@
 import logging
 
 from skill_evaluator.config.loader import load_eval_suite
-from skill_evaluator.config.schema import ResolvedConfig
 from skill_evaluator.runner import SuiteRunner
 
 
@@ -133,7 +132,13 @@ tests:
         )
         write_msg = mock_anthropic_message(
             text="Writing.",
-            tool_uses=[{"id": "tc_002", "name": "Write", "input": {"file_path": "/a.txt", "content": "new"}}],
+            tool_uses=[
+                {
+                    "id": "tc_002",
+                    "name": "Write",
+                    "input": {"file_path": "/a.txt", "content": "new"},
+                }
+            ],
             stop_reason="tool_use",
         )
         final_msg = mock_anthropic_message(text="All done.", stop_reason="end_turn")
@@ -177,9 +182,7 @@ tests:
 
         assert result.all_passed is True
 
-    def test_multi_turn_baseline(
-        self, tmp_path, mock_anthropic_client, mock_anthropic_message
-    ):
+    def test_multi_turn_baseline(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
         """Multi-turn tests support baseline comparison."""
         skill_dir = tmp_path / "skills"
         skill_dir.mkdir()
@@ -263,6 +266,7 @@ tests:
     def test_execution_error_handled(self, tmp_path, mock_anthropic_client):
         eval_file = self._make_suite_files(tmp_path)
         from anthropic import APIConnectionError
+
         mock_anthropic_client.messages.create.side_effect = APIConnectionError(request=None)
 
         suite = load_eval_suite(eval_file)
@@ -284,9 +288,7 @@ class TestSuiteRunnerContext:
         ref.write_text("def hello():\n    return 'world'")
         return skill_dir
 
-    def test_suite_context_injected(
-        self, tmp_path, mock_anthropic_client, mock_anthropic_message
-    ):
+    def test_suite_context_injected(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
         self._make_context_files(tmp_path)
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
             text="Looks good"
@@ -321,13 +323,9 @@ tests:
         # Context adds messages before the test user message
         assert len(messages) > 1
 
-    def test_test_context_injected(
-        self, tmp_path, mock_anthropic_client, mock_anthropic_message
-    ):
+    def test_test_context_injected(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
         self._make_context_files(tmp_path)
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Reviewed"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Reviewed")
 
         yaml_content = """
 suite: "test"
@@ -362,9 +360,7 @@ tests:
         self._make_context_files(tmp_path)
         extra = tmp_path / "extra.py"
         extra.write_text("extra content")
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Done"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Done")
 
         yaml_content = """
 suite: "test"
@@ -393,16 +389,14 @@ tests:
 
         call_kwargs = mock_anthropic_client.messages.create.call_args
         messages = call_kwargs.kwargs["messages"]
-        # Should have: user (context intro) -> assistant (with 2 tool_calls) -> user (2 tool_results + test msg)
+        # user (context intro) -> assistant (2 tool_calls) -> user (2 tool_results + test msg)
         assert len(messages) == 3
         # Assistant message should have 2 tool_use blocks (suite + test context)
         assistant_content = messages[1]["content"]
         tool_uses = [b for b in assistant_content if b.get("type") == "tool_use"]
         assert len(tool_uses) == 2
 
-    def test_missing_context_file_gives_error(
-        self, tmp_path, mock_anthropic_client
-    ):
+    def test_missing_context_file_gives_error(self, tmp_path, mock_anthropic_client):
         self._make_context_files(tmp_path)
 
         yaml_content = """
@@ -436,9 +430,7 @@ tests:
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
         self._make_context_files(tmp_path)
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="OK"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="OK")
 
         yaml_content = """
 suite: "test"
@@ -518,12 +510,8 @@ tests:
         assert len(group.runs) == 3
         assert mock_anthropic_client.messages.create.call_count == 3
 
-    def test_runs_1_backward_compat(
-        self, tmp_path, mock_anthropic_client, mock_anthropic_message
-    ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+    def test_runs_1_backward_compat(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"
@@ -585,9 +573,7 @@ tests:
     def test_baseline_omits_skill_message(
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"
@@ -663,12 +649,8 @@ tests:
         # All skill runs should come before all baseline runs
         assert call_order == ["skill", "skill", "skill", "baseline", "baseline", "baseline"]
 
-    def test_per_test_runs_override(
-        self, tmp_path, mock_anthropic_client, mock_anthropic_message
-    ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+    def test_per_test_runs_override(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"
@@ -697,9 +679,7 @@ tests:
     def test_concurrency_1_sequential(
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"
@@ -728,9 +708,7 @@ tests:
     def test_concurrency_gt_1_all_work_items_executed(
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"
@@ -791,9 +769,7 @@ tests:
     def test_trace_stored_on_test_result(
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"
@@ -818,9 +794,7 @@ tests:
         assert tr.trace is not None
         assert tr.trace.text_output == "Hello!"
 
-    def test_llm_judge_integration(
-        self, tmp_path, mock_anthropic_client, mock_anthropic_message
-    ):
+    def test_llm_judge_integration(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
         """LLM judge assertions are evaluated via the runner."""
         # First call: main test response; second call: judge response
         test_msg = mock_anthropic_message(text="Hello! How can I help?")
@@ -868,9 +842,7 @@ class TestSkillOnlyFiltering:
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
         """Baseline runs should not include messages marked skill_only: true."""
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"
@@ -924,9 +896,7 @@ tests:
         self, tmp_path, mock_anthropic_client, mock_anthropic_message
     ):
         """Skill runs should include all messages, including skill_only ones."""
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
         yaml = """
 suite: "test"
 skill: "./skills/SKILL.md"

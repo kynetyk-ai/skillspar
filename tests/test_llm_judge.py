@@ -110,9 +110,7 @@ class TestCheckLlmJudge:
     def test_custom_model_override(
         self, simple_text_trace, mock_anthropic_client, mock_anthropic_message
     ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="PASS\nOK"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="PASS\nOK")
 
         assertion = LLMJudgeAssertion(
             type="llm_judge", criteria="Is it good?", model="claude-opus-4"
@@ -130,9 +128,7 @@ class TestCheckLlmJudge:
     def test_falls_back_to_judge_model(
         self, simple_text_trace, mock_anthropic_client, mock_anthropic_message
     ):
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="PASS\nOK"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="PASS\nOK")
 
         assertion = LLMJudgeAssertion(type="llm_judge", criteria="Is it good?")
         check_llm_judge(

@@ -6,7 +6,7 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import click
@@ -16,6 +16,7 @@ from skill_evaluator.engine.prefix import PrefixLoadError
 from skill_evaluator.executor import execute_suite
 from skill_evaluator.reporting.console import ConsoleReporter
 from skill_evaluator.skill.parser import SkillParseError
+from skill_evaluator.tools.registry import ToolRegistryError
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +41,7 @@ def _resolve_output_path(output: str | None, output_format: str, suite_name: str
         return path
 
     # Otherwise treat as a directory and auto-generate a filename
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     slug = _slugify(suite_name)
     ext = "xml" if output_format == "junit" else "json"
     return path / f"{slug}_{timestamp}.{ext}"
@@ -83,23 +84,36 @@ def main():
 @click.argument("eval_files", nargs=-1, required=True)
 @click.option("--runs", type=int, default=None, help="Override suite default for runs per test.")
 @click.option(
-    "--concurrency", type=int, default=None, help="Override suite default for max parallel API calls."
+    "--concurrency",
+    type=int,
+    default=None,
+    help="Override suite default for max parallel API calls.",
 )
 @click.option("--output", type=click.Path(), default=None, help="Output path for report file.")
 @click.option(
-    "--format", "output_format", type=click.Choice(["json", "junit"]), default=None,
+    "--format",
+    "output_format",
+    type=click.Choice(["json", "junit"]),
+    default=None,
     help="Report format (default: inferred from --output extension, or json).",
 )
 @click.option(
-    "--filter", "filter_pattern", type=str, default=None,
+    "--filter",
+    "filter_pattern",
+    type=str,
+    default=None,
     help="Only run tests whose name contains this substring.",
 )
 @click.option(
-    "--model", type=str, default=None,
+    "--model",
+    type=str,
+    default=None,
     help="Override the suite default model.",
 )
 @click.option(
-    "--verbose", is_flag=True, default=False,
+    "--verbose",
+    is_flag=True,
+    default=False,
     help="Show per-assertion details in console output.",
 )
 @click.option(
@@ -108,7 +122,17 @@ def main():
     default=None,
     help="Set logging verbosity (default: WARNING).",
 )
-def run(eval_files, runs, concurrency, output, output_format, filter_pattern, model, verbose, log_level):
+def run(
+    eval_files,
+    runs,
+    concurrency,
+    output,
+    output_format,
+    filter_pattern,
+    model,
+    verbose,
+    log_level,
+):
     """Run eval suites from .eval.yaml files.
 
     Accepts one or more files, directories, or glob patterns. Directories are
@@ -159,10 +183,21 @@ def run(eval_files, runs, concurrency, output, output_format, filter_pattern, mo
         )
 
 
-def _load_and_execute(eval_file, *, cli_runs=None, cli_concurrency=None, cli_model=None,
-                      cli_output=None, cli_output_format=None, cli_verbose=False,
-                      cli_filter_pattern=None):
-    """Load, execute, and summarise a suite. Returns (suite, config, suite_result, cost_summary, cache_summary, json_report)."""
+def _load_and_execute(
+    eval_file,
+    *,
+    cli_runs=None,
+    cli_concurrency=None,
+    cli_model=None,
+    cli_output=None,
+    cli_output_format=None,
+    cli_verbose=False,
+    cli_filter_pattern=None,
+):
+    """Load, execute, and summarise a suite.
+
+    Returns (suite, config, suite_result, cost_summary, cache_summary, json_report).
+    """
     from skill_evaluator.reporting.cost import build_cache_summary, build_cost_summary
     from skill_evaluator.reporting.json_report import JsonReporter
 
@@ -192,7 +227,7 @@ def _load_and_execute(eval_file, *, cli_runs=None, cli_concurrency=None, cli_mod
 
     try:
         suite_result = execute_suite(Path(eval_file), suite, config)
-    except (SkillParseError, PrefixLoadError) as e:
+    except (SkillParseError, PrefixLoadError, ToolRegistryError) as e:
         click.echo(f"Error: {e}", err=True)
         sys.exit(2)
 
@@ -329,18 +364,28 @@ def _run_multi_suite(
 @click.argument("eval_file", type=click.Path(exists=True))
 @click.option("--runs", type=int, default=None, help="Override suite default for runs per test.")
 @click.option(
-    "--concurrency", type=int, default=None, help="Override suite default for max parallel API calls."
+    "--concurrency",
+    type=int,
+    default=None,
+    help="Override suite default for max parallel API calls.",
 )
 @click.option(
-    "--filter", "filter_pattern", type=str, default=None,
+    "--filter",
+    "filter_pattern",
+    type=str,
+    default=None,
     help="Only run tests whose name contains this substring.",
 )
 @click.option(
-    "--model", type=str, default=None,
+    "--model",
+    type=str,
+    default=None,
     help="Override the suite default model.",
 )
 @click.option(
-    "--verbose", is_flag=True, default=False,
+    "--verbose",
+    is_flag=True,
+    default=False,
     help="Show per-assertion details in console output.",
 )
 @click.option(
@@ -350,7 +395,9 @@ def _run_multi_suite(
     help="Set logging verbosity (default: WARNING).",
 )
 @click.option(
-    "--debounce", type=int, default=300,
+    "--debounce",
+    type=int,
+    default=300,
     help="Debounce interval in milliseconds (default: 300).",
 )
 def watch(eval_file, runs, concurrency, filter_pattern, model, verbose, log_level, debounce):
@@ -382,7 +429,8 @@ def _run_suite_and_build_report(eval_file, model_override=None):
     load_dotenv()
 
     suite, _config, suite_result, cost_summary, cache_summary, report = _load_and_execute(
-        eval_file, cli_model=model_override,
+        eval_file,
+        cli_model=model_override,
     )
 
     reporter = ConsoleReporter(verbose=False)
@@ -402,7 +450,9 @@ def snapshot():
 @snapshot.command("save")
 @click.argument("eval_file", type=click.Path(exists=True))
 @click.option(
-    "--snapshot-dir", type=click.Path(), default=None,
+    "--snapshot-dir",
+    type=click.Path(),
+    default=None,
     help="Override snapshot directory (default: .skillspar/snapshots/).",
 )
 @click.option(
@@ -426,7 +476,9 @@ def snapshot_save(eval_file, snapshot_dir, log_level):
 @snapshot.command("list")
 @click.option("--suite", "suite_name", type=str, default=None, help="Filter by suite name.")
 @click.option(
-    "--snapshot-dir", type=click.Path(), default=None,
+    "--snapshot-dir",
+    type=click.Path(),
+    default=None,
     help="Override snapshot directory (default: .skillspar/snapshots/).",
 )
 def snapshot_list(suite_name, snapshot_dir):
@@ -449,11 +501,16 @@ def snapshot_list(suite_name, snapshot_dir):
 @click.argument("before", type=click.Path(exists=True), required=False)
 @click.argument("after", type=click.Path(exists=True), required=False)
 @click.option(
-    "--latest", "eval_file", type=click.Path(exists=True), default=None,
+    "--latest",
+    "eval_file",
+    type=click.Path(exists=True),
+    default=None,
     help="Run a suite and diff against the most recent saved snapshot.",
 )
 @click.option(
-    "--snapshot-dir", type=click.Path(), default=None,
+    "--snapshot-dir",
+    type=click.Path(),
+    default=None,
     help="Override snapshot directory (default: .skillspar/snapshots/).",
 )
 @click.option(

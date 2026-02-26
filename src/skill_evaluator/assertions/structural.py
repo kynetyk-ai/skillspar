@@ -16,9 +16,7 @@ from skill_evaluator.config.schema import (
 from skill_evaluator.engine.trace import Trace
 
 
-def check_tool_called_times(
-    assertion: ToolCalledTimesAssertion, trace: Trace
-) -> AssertionResult:
+def check_tool_called_times(assertion: ToolCalledTimesAssertion, trace: Trace) -> AssertionResult:
     count = trace.tool_names.count(assertion.tool)
 
     if assertion.exactly is not None:
@@ -44,8 +42,7 @@ def check_tool_called_times(
             status=AssertionStatus.FAILED,
             assertion_type="tool_called_times",
             message=(
-                f"Expected '{assertion.tool}' called at least {assertion.min} "
-                f"time(s), got {count}"
+                f"Expected '{assertion.tool}' called at least {assertion.min} time(s), got {count}"
             ),
             details={"tool": assertion.tool, "min": assertion.min, "actual": count},
         )
@@ -54,8 +51,7 @@ def check_tool_called_times(
             status=AssertionStatus.FAILED,
             assertion_type="tool_called_times",
             message=(
-                f"Expected '{assertion.tool}' called at most {assertion.max} "
-                f"time(s), got {count}"
+                f"Expected '{assertion.tool}' called at most {assertion.max} time(s), got {count}"
             ),
             details={"tool": assertion.tool, "max": assertion.max, "actual": count},
         )
@@ -67,9 +63,7 @@ def check_tool_called_times(
     )
 
 
-def check_tool_args_match(
-    assertion: ToolArgsMatchAssertion, trace: Trace
-) -> AssertionResult:
+def check_tool_args_match(assertion: ToolArgsMatchAssertion, trace: Trace) -> AssertionResult:
     matching_calls = [tc for tc in trace.tool_calls if tc.name == assertion.tool]
     if not matching_calls:
         return AssertionResult(
@@ -116,9 +110,7 @@ def check_tool_args_match(
     )
 
 
-def check_tool_sequence(
-    assertion: ToolSequenceAssertion, trace: Trace
-) -> AssertionResult:
+def check_tool_sequence(assertion: ToolSequenceAssertion, trace: Trace) -> AssertionResult:
     """Check that expected tools appear as a subsequence of actual tool names."""
     actual = trace.tool_names
     expected = assertion.tools
@@ -140,9 +132,7 @@ def check_tool_sequence(
     )
 
 
-def check_turn_count(
-    assertion: TurnCountAssertion, trace: Trace
-) -> AssertionResult:
+def check_turn_count(assertion: TurnCountAssertion, trace: Trace) -> AssertionResult:
     count = trace.turn_count
 
     if assertion.exactly is not None:

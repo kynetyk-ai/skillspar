@@ -2,8 +2,7 @@
 
 import pytest
 
-from skill_evaluator.tools.builtins import get_builtin_tool, _BUILTINS
-
+from skill_evaluator.tools.builtins import _BUILTINS, get_builtin_tool
 
 EXPECTED_TOOLS = ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
 

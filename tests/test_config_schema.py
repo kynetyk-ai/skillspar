@@ -27,6 +27,7 @@ from skill_evaluator.config.schema import (
 class TestAssertionDiscriminator:
     def test_stop_reason(self):
         from pydantic import TypeAdapter
+
         ta = TypeAdapter(AssertionConfig)
         result = ta.validate_python({"type": "stop_reason", "value": "end_turn"})
         assert isinstance(result, StopReasonAssertion)
@@ -34,24 +35,28 @@ class TestAssertionDiscriminator:
 
     def test_output_contains(self):
         from pydantic import TypeAdapter
+
         ta = TypeAdapter(AssertionConfig)
         result = ta.validate_python({"type": "output_contains", "value": "hello"})
         assert isinstance(result, OutputContainsAssertion)
 
     def test_tool_called(self):
         from pydantic import TypeAdapter
+
         ta = TypeAdapter(AssertionConfig)
         result = ta.validate_python({"type": "tool_called", "tool": "Write"})
         assert isinstance(result, ToolCalledAssertion)
 
     def test_tool_not_called(self):
         from pydantic import TypeAdapter
+
         ta = TypeAdapter(AssertionConfig)
         result = ta.validate_python({"type": "tool_not_called", "tool": "Read"})
         assert isinstance(result, ToolNotCalledAssertion)
 
     def test_invalid_type_raises(self):
         from pydantic import TypeAdapter
+
         ta = TypeAdapter(AssertionConfig)
         with pytest.raises(ValidationError):
             ta.validate_python({"type": "nonexistent", "value": "x"})
@@ -409,7 +414,7 @@ class TestResolvedConfig:
 
     def test_frozen(self):
         config = ResolvedConfig()
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             config.model = "new-model"
 
     def test_custom_values(self):
@@ -452,7 +457,12 @@ class TestSkillOnlyField:
                         "messages": [
                             {"role": "user", "content": "Hi"},
                             {"role": "assistant", "content": "Reading.", "skill_only": True},
-                            {"role": "tool_result", "tool_use_id": "tc_001", "content": "data", "skill_only": True},
+                            {
+                                "role": "tool_result",
+                                "tool_use_id": "tc_001",
+                                "content": "data",
+                                "skill_only": True,
+                            },
                             {"role": "user", "content": "Go"},
                         ]
                     },
@@ -548,9 +558,7 @@ class TestConversationPrefixConfig:
 
     def test_must_end_with_assistant(self):
         with pytest.raises(ValidationError, match="must end with an assistant"):
-            ConversationPrefixConfig(
-                messages=[MessageConfig(role="user", content="Hi")]
-            )
+            ConversationPrefixConfig(messages=[MessageConfig(role="user", content="Hi")])
 
     def test_conversation_prefix_in_suite(self):
         raw = {

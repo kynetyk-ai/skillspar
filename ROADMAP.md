@@ -189,36 +189,37 @@ structure — no restructuring needed.
 **Milestone**: `claude --plugin-dir .` loads the plugin, `/skillspar:evaluate` is
 discoverable and functional. ✅
 
-## Phase 5A: Internal Launch (Future)
+## Phase 5A: Internal Launch ✅
 
 Full polish for team and collaborator use — CI/CD, error handling, code quality enforcement,
 and contribution workflow. Install via GitHub repo (`pip install git+...`).
 
 ### CI/CD
-- [ ] GitHub Actions workflow: `ruff check src/` + `pytest` on every push and PR
-- [ ] `.pre-commit-config.yaml` with ruff + ruff-format hooks
+- [x] GitHub Actions workflow: `ruff check src/` + `ruff format --check` + `pyright` + `pytest` on every push and PR
+- [x] `.pre-commit-config.yaml` with ruff + ruff-format hooks
 
 ### Packaging metadata (`pyproject.toml`)
-- [ ] Add `[project.urls]` (Homepage, Repository, Bug Tracker)
-- [ ] Add `[project.authors]`
+- [x] Add `[project.urls]` (Homepage, Repository, Bug Tracker)
+- [x] Add `[project.authors]`
 
 ### Error handling UX
-- [ ] Catch `SkillParseError` in CLI/runner (currently surfaces as raw traceback)
-- [ ] Pre-flight `ANTHROPIC_API_KEY` check with user-friendly error message
+- [x] Catch `SkillParseError` in CLI/runner — *already done in prior phases*
+- [x] Pre-flight `ANTHROPIC_API_KEY` check with user-friendly error message — *already done in prior phases*
+- [x] Catch `ToolRegistryError` in single-suite CLI path (gap found during 5A exploration)
 
 ### Code quality tooling
-- [ ] Configure and enforce mypy or pyright (type annotations exist but are unenforced)
-- [ ] Expand ruff rule sets: add `I` (isort), `B` (bugbear), `UP` (pyupgrade)
+- [x] Configure and enforce pyright (`basic` mode, Python 3.11, src-only)
+- [x] Expand ruff rule sets: add `I` (isort), `B` (bugbear), `UP` (pyupgrade)
 
 ### Contribution workflow
-- [ ] GitHub issue templates (`.github/ISSUE_TEMPLATE/`): bug report and feature request
-- [ ] PR template (`.github/pull_request_template.md`)
+- [x] GitHub issue templates (`.github/ISSUE_TEMPLATE/`): bug report and feature request
+- [x] PR template (`.github/pull_request_template.md`)
 
 ### Cleanup
-- [ ] Remove or populate empty `docs/` directory
+- [x] `docs/` directory populated (cli-reference.md, code-review.md) — *already done in prior phases*
 
 **Milestone**: CI is green, error messages are user-friendly, and the team has a clean
-contribution workflow via GitHub.
+contribution workflow via GitHub. ✅
 
 ## Phase 5B: Open Source Launch (Future)
 

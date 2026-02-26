@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from io import StringIO
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from rich.console import Console
 
 from skill_evaluator.config.loader import ConfigLoadError
@@ -177,7 +175,6 @@ class TestRunOnce:
 
     @patch("skill_evaluator.watch.load_eval_suite")
     def test_config_load_error(self, mock_load, tmp_path):
-        from skill_evaluator.config.loader import ConfigLoadError
 
         eval_file = tmp_path / "suite.eval.yaml"
         eval_file.touch()
@@ -337,14 +334,18 @@ class TestWatchLoop:
         report = {"tests": [], "summary": {}, "timestamp": "2025-01-01T00:00:00"}
 
         initial_result = WatchIterationResult(
-            suite=suite, suite_result=suite_result, report=report,
+            suite=suite,
+            suite_result=suite_result,
+            report=report,
         )
         second_result = WatchIterationResult(
-            suite=suite, suite_result=suite_result, report=report,
+            suite=suite,
+            suite_result=suite_result,
+            report=report,
         )
         mock_run_once.side_effect = [initial_result, second_result, KeyboardInterrupt]
 
-        # Mock watchfiles.watch as a generator yielding one change set then raising KeyboardInterrupt
+        # Mock watchfiles.watch as a generator yielding one change set
         def fake_watch(*paths, debounce=None):
             yield {("modified", str(eval_file))}
             yield {("modified", str(eval_file))}  # triggers third run_once -> KeyboardInterrupt
@@ -358,9 +359,7 @@ class TestWatchLoop:
 
     @patch("skill_evaluator.watch.watchfiles.watch")
     @patch("skill_evaluator.watch.run_once")
-    def test_error_iteration_preserves_previous_report(
-        self, mock_run_once, mock_watch, tmp_path
-    ):
+    def test_error_iteration_preserves_previous_report(self, mock_run_once, mock_watch, tmp_path):
         eval_file = tmp_path / "suite.eval.yaml"
         eval_file.touch()
 
@@ -381,7 +380,9 @@ class TestWatchLoop:
         results = [
             # Initial: success
             WatchIterationResult(
-                suite=suite, suite_result=suite_result, report=good_report,
+                suite=suite,
+                suite_result=suite_result,
+                report=good_report,
             ),
             # Second: error (report stays None)
             WatchIterationResult(error="syntax error"),

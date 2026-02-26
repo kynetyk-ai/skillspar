@@ -151,9 +151,7 @@ class TestCli:
         mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
-        result = runner.invoke(
-            main, ["run", str(eval_file), "--output", str(output_file)]
-        )
+        result = runner.invoke(main, ["run", str(eval_file), "--output", str(output_file)])
         assert result.exit_code == 0
         assert output_file.exists()
         with open(output_file) as f:
@@ -196,9 +194,7 @@ class TestCli:
         mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
-        result = runner.invoke(
-            main, ["run", str(eval_file), "--output", str(output_file)]
-        )
+        result = runner.invoke(main, ["run", str(eval_file), "--output", str(output_file)])
         assert result.exit_code == 0
         assert output_file.exists()
         parsed = ET.parse(output_file)
@@ -283,9 +279,7 @@ class TestCli:
         mock_execute.return_value = _make_passing_suite_result()
 
         runner = CliRunner()
-        result = runner.invoke(
-            main, ["run", str(eval_file), "--model", "claude-opus-4"]
-        )
+        result = runner.invoke(main, ["run", str(eval_file), "--model", "claude-opus-4"])
         assert result.exit_code == 0
         config = mock_execute.call_args[0][2]
         assert config.model == "claude-opus-4"

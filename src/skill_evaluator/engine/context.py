@@ -99,10 +99,12 @@ def build_context_messages(
     for i, (path, ctx) in enumerate(resolved):
         tool_id = f"ctx_{i + 1:04d}"
         content = read_context_file(path, ctx.lines)
-        tool_results.append(MessageConfig(
-            role="tool_result",
-            tool_use_id=tool_id,
-            content=content,
-        ))
+        tool_results.append(
+            MessageConfig(
+                role="tool_result",
+                tool_use_id=tool_id,
+                content=content,
+            )
+        )
 
     return [user_msg, assistant_msg, *tool_results]

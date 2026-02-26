@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -147,7 +147,7 @@ def display_iteration(
     """Render a single watch iteration to the terminal."""
     console.clear()
 
-    timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
+    timestamp = datetime.now(UTC).strftime("%H:%M:%S")
     console.print(f"[bold]Iteration {iteration}[/bold]  {timestamp}")
     console.print()
 
@@ -157,6 +157,7 @@ def display_iteration(
         console.print("[dim]Watching for changes... (Ctrl+C to stop)[/dim]")
         return
 
+    assert result.suite_result is not None
     reporter = ConsoleReporter(console=console, verbose=verbose)
     reporter.report(
         result.suite_result,
@@ -194,20 +195,22 @@ def watch_loop(
     console = Console()
     eval_path = eval_file.resolve()
 
-    run_kwargs = dict(
-        cli_runs=cli_runs,
-        cli_concurrency=cli_concurrency,
-        cli_model=cli_model,
-        cli_filter_pattern=cli_filter_pattern,
-        cli_verbose=cli_verbose,
-    )
+    def _run() -> WatchIterationResult:
+        return run_once(
+            eval_path,
+            cli_runs=cli_runs,
+            cli_concurrency=cli_concurrency,
+            cli_model=cli_model,
+            cli_filter_pattern=cli_filter_pattern,
+            cli_verbose=cli_verbose,
+        )
 
     iteration = 1
     previous_report: dict[str, Any] | None = None
 
     try:
         # Initial run
-        result = run_once(eval_path, **run_kwargs)
+        result = _run()
         display_iteration(console, iteration, result, previous_report, verbose=cli_verbose)
 
         if result.report is not None:
@@ -222,10 +225,8 @@ def watch_loop(
         while True:
             for _changes in watchfiles.watch(*watched, debounce=debounce_ms):
                 iteration += 1
-                result = run_once(eval_path, **run_kwargs)
-                display_iteration(
-                    console, iteration, result, previous_report, verbose=cli_verbose
-                )
+                result = _run()
+                display_iteration(console, iteration, result, previous_report, verbose=cli_verbose)
 
                 if result.report is not None:
                     previous_report = result.report

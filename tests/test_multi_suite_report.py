@@ -92,10 +92,12 @@ class TestDisplayMultiSuiteSummary:
         return buf.getvalue()
 
     def test_all_passing(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True, num_tests=3),
-            _make_outcome("suite-b", passed=True, num_tests=2),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True, num_tests=3),
+                _make_outcome("suite-b", passed=True, num_tests=2),
+            ]
+        )
         output = self._capture(result)
         assert "Multi-Suite Summary" in output
         assert "suite-a" in output
@@ -105,48 +107,58 @@ class TestDisplayMultiSuiteSummary:
         assert "2 passed" in output
 
     def test_one_failing(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True, num_tests=3),
-            _make_outcome("suite-b", passed=False, num_tests=2),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True, num_tests=3),
+                _make_outcome("suite-b", passed=False, num_tests=2),
+            ]
+        )
         output = self._capture(result)
         assert "FAIL" in output
         assert "1 failed" in output
         assert "1 passed" in output
 
     def test_error_suite(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True),
-            _make_outcome("bad-suite", error="config error"),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True),
+                _make_outcome("bad-suite", error="config error"),
+            ]
+        )
         output = self._capture(result)
         assert "ERROR" in output
         assert "1 errored" in output
 
     def test_cost_displayed(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True, cost=0.50),
-            _make_outcome("suite-b", passed=True, cost=0.75),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True, cost=0.50),
+                _make_outcome("suite-b", passed=True, cost=0.75),
+            ]
+        )
         output = self._capture(result)
         assert "$0.50" in output
         assert "$0.75" in output
         assert "$1.25" in output  # total
 
     def test_tests_column_shows_counts(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True, num_tests=4),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True, num_tests=4),
+            ]
+        )
         output = self._capture(result)
         assert "4/4" in output
 
 
 class TestBuildMultiSuiteJsonReport:
     def test_basic_structure(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True),
-            _make_outcome("suite-b", passed=False),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True),
+                _make_outcome("suite-b", passed=False),
+            ]
+        )
         report = build_multi_suite_json_report(result)
 
         assert report["schema_version"] == "1"
@@ -159,9 +171,11 @@ class TestBuildMultiSuiteJsonReport:
         assert report["summary"]["all_passed"] is False
 
     def test_error_suite_in_report(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("bad-suite", error="config error"),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("bad-suite", error="config error"),
+            ]
+        )
         report = build_multi_suite_json_report(result)
 
         assert len(report["suites"]) == 1
@@ -170,9 +184,11 @@ class TestBuildMultiSuiteJsonReport:
         assert report["summary"]["error_suites"] == 1
 
     def test_passing_suite_has_full_report(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True),
+            ]
+        )
         report = build_multi_suite_json_report(result)
 
         suite_entry = report["suites"][0]
@@ -182,19 +198,23 @@ class TestBuildMultiSuiteJsonReport:
         assert suite_entry["eval_file"] == "suite-a.eval.yaml"
 
     def test_cost_in_summary(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True, cost=1.5),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True, cost=1.5),
+            ]
+        )
         report = build_multi_suite_json_report(result)
         assert report["summary"]["total_cost_usd"] == 1.5
 
 
 class TestBuildMultiSuiteJunitReport:
     def test_valid_xml(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True, num_tests=2),
-            _make_outcome("suite-b", passed=False, num_tests=1),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True, num_tests=2),
+                _make_outcome("suite-b", passed=False, num_tests=1),
+            ]
+        )
         root = build_multi_suite_junit_report(result)
 
         assert root.tag == "testsuites"
@@ -203,9 +223,11 @@ class TestBuildMultiSuiteJunitReport:
         assert len(testsuites) >= 2
 
     def test_error_suite_in_junit(self):
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("bad-suite", error="config error"),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("bad-suite", error="config error"),
+            ]
+        )
         root = build_multi_suite_junit_report(result)
 
         testsuites = root.findall("testsuite")
@@ -222,9 +244,11 @@ class TestBuildMultiSuiteJunitReport:
 
     def test_xml_serializable(self):
         """Verify the report can be serialized to XML string."""
-        result = MultiSuiteResult(outcomes=[
-            _make_outcome("suite-a", passed=True),
-        ])
+        result = MultiSuiteResult(
+            outcomes=[
+                _make_outcome("suite-a", passed=True),
+            ]
+        )
         root = build_multi_suite_junit_report(result)
         tree = ET.ElementTree(root)
         ET.indent(tree, space="  ")

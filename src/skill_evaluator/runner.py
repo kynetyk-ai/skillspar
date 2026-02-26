@@ -74,9 +74,7 @@ class SuiteRunner:
 
     def _effective_threshold(self, test: SingleTurnTest | MultiTurnTest) -> float:
         return (
-            test.pass_threshold
-            if test.pass_threshold is not None
-            else self.config.pass_threshold
+            test.pass_threshold if test.pass_threshold is not None else self.config.pass_threshold
         )
 
     def _build_system_prompt(self) -> str | list[dict]:
@@ -110,7 +108,12 @@ class SuiteRunner:
     def run(self) -> SuiteResult:
         """Run all tests and return results."""
         run_id = str(uuid.uuid4())
-        logger.info("Starting suite '%s' (%d tests) run_id=%s", self.suite.suite, len(self.suite.tests), run_id)
+        logger.info(
+            "Starting suite '%s' (%d tests) run_id=%s",
+            self.suite.suite,
+            len(self.suite.tests),
+            run_id,
+        )
         skill_path = resolve_skill_path(self.eval_file, self.suite.skill)
         skill = parse_skill(skill_path)
         skill_body = skill.body
@@ -138,7 +141,8 @@ class SuiteRunner:
                     logger.warning(
                         "Prefix estimated at ~%d tokens, below minimum cache threshold of %d. "
                         "Caching may not activate.",
-                        token_est, MINIMUM_CACHE_TOKEN_THRESHOLD,
+                        token_est,
+                        MINIMUM_CACHE_TOKEN_THRESHOLD,
                     )
             except PrefixLoadError as e:
                 logger.error("Failed to load conversation prefix: %s", e)
@@ -163,9 +167,7 @@ class SuiteRunner:
                 continue
             runs = self._effective_runs(test)
             for run_i in range(runs):
-                work_items.append(
-                    _WorkItem(idx, test, run_i, is_baseline=True, skill_body="")
-                )
+                work_items.append(_WorkItem(idx, test, run_i, is_baseline=True, skill_body=""))
 
         logger.debug("Built %d work items", len(work_items))
 
@@ -199,14 +201,10 @@ class SuiteRunner:
             runs_count = self._effective_runs(test)
             threshold = self._effective_threshold(test)
 
-            skill_runs = [
-                results_map[(idx, ri, False)] for ri in range(runs_count)
-            ]
+            skill_runs = [results_map[(idx, ri, False)] for ri in range(runs_count)]
             baseline_runs = None
             if test.baseline:
-                baseline_runs = [
-                    results_map[(idx, ri, True)] for ri in range(runs_count)
-                ]
+                baseline_runs = [results_map[(idx, ri, True)] for ri in range(runs_count)]
 
             group = TestRunGroup(
                 test_name=test.name,
@@ -219,24 +217,24 @@ class SuiteRunner:
         passed = sum(1 for g in suite_result.test_results if g.passed)
         logger.info(
             "Suite '%s' complete: %d/%d tests passed",
-            self.suite.suite, passed, len(suite_result.test_results),
+            self.suite.suite,
+            passed,
+            len(suite_result.test_results),
         )
         return suite_result
 
-    def _execute_work_item(
-        self, item: _WorkItem, suite_tools: list[dict[str, Any]]
-    ) -> TestResult:
+    def _execute_work_item(self, item: _WorkItem, suite_tools: list[dict[str, Any]]) -> TestResult:
         logger.debug(
             "Dispatching test '%s' run=%d baseline=%s",
-            item.test.name, item.run_index, item.is_baseline,
+            item.test.name,
+            item.run_index,
+            item.is_baseline,
         )
         if isinstance(item.test, MultiTurnTest):
             return self._run_multi_turn(item.test, item.skill_body, suite_tools)
         return self._run_single_turn(item.test, item.skill_body, suite_tools)
 
-    def _resolve_context_for(
-        self, test: SingleTurnTest | MultiTurnTest
-    ) -> list[MessageConfig]:
+    def _resolve_context_for(self, test: SingleTurnTest | MultiTurnTest) -> list[MessageConfig]:
         """Merge suite-level and test-level context, build synthetic messages."""
         context_files = list(self.suite.context or []) + list(test.context or [])
         if not context_files:
@@ -250,6 +248,7 @@ class SuiteRunner:
         suite_tools: list[dict[str, Any]],
     ) -> TestResult:
         """Execute a single-turn test and evaluate its assertions."""
+
         def make_executor(system_prompt, input_config):
             executor = SingleTurnExecutor(self.client, self.config)
             return executor.execute(system_prompt, input_config, tools=suite_tools or None)
@@ -263,6 +262,7 @@ class SuiteRunner:
         suite_tools: list[dict[str, Any]],
     ) -> TestResult:
         """Execute a multi-turn test and evaluate its assertions."""
+
         def make_executor(system_prompt, input_config):
             executor = MultiTurnExecutor(
                 client=self.client,
@@ -298,12 +298,19 @@ class SuiteRunner:
             )
 
         skill_cache = self._skill_cache_control()
-        skill_messages = build_skill_messages(skill_body, cache_control=skill_cache) if skill_body else []
+        skill_messages = (
+            build_skill_messages(skill_body, cache_control=skill_cache) if skill_body else []
+        )
         prefix_messages = list(self._prefix_messages)
         test_messages = list(test.input.messages)
         if not skill_body:  # baseline run — strip skill-only messages
             test_messages = [m for m in test_messages if not m.skill_only]
-        merged_messages = self._merge_messages(skill_messages, prefix_messages, context_messages, test_messages)
+        merged_messages = self._merge_messages(
+            skill_messages,
+            prefix_messages,
+            context_messages,
+            test_messages,
+        )
         input_config = InputConfig(messages=merged_messages)
 
         system_prompt = self._build_system_prompt()
@@ -325,7 +332,8 @@ class SuiteRunner:
         duration = time.monotonic() - t0
 
         assertion_results = evaluate_assertions(
-            test.assertions, trace,
+            test.assertions,
+            trace,
             client=self.client,
             judge_model=self.config.judge_model or self.config.model,
         )

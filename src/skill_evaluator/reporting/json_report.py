@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -101,7 +101,7 @@ class JsonReporter:
             "suite": suite.suite,
             "skill": suite.skill,
             "defaults": defaults,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "tests": tests,
             "summary": summary,
         }

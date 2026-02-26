@@ -27,9 +27,11 @@ def resolve_tools(tool_configs: list[ToolConfig] | None) -> list[dict]:
             except KeyError as e:
                 raise ToolRegistryError(str(e)) from None
         elif isinstance(config, CustomToolConfig):
-            tools.append({
-                "name": config.name,
-                "description": config.description,
-                "input_schema": config.input_schema,
-            })
+            tools.append(
+                {
+                    "name": config.name,
+                    "description": config.description,
+                    "input_schema": config.input_schema,
+                }
+            )
     return tools

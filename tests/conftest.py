@@ -17,28 +17,34 @@ def sample_usage():
 @pytest.fixture
 def simple_text_trace(sample_usage):
     trace = Trace()
-    trace.add_turn(Turn(
-        text_output="Hello Alice! How can I help you today?",
-        tool_calls=[],
-        stop_reason="end_turn",
-        usage=sample_usage,
-        raw_response=None,
-    ))
+    trace.add_turn(
+        Turn(
+            text_output="Hello Alice! How can I help you today?",
+            tool_calls=[],
+            stop_reason="end_turn",
+            usage=sample_usage,
+            raw_response=None,
+        )
+    )
     return trace
 
 
 @pytest.fixture
 def tool_call_trace(sample_usage):
     trace = Trace()
-    trace.add_turn(Turn(
-        text_output="I'll create that file for you.",
-        tool_calls=[
-            ToolCall(id="tc_001", name="Write", input={"file_path": "/hello.txt", "content": "hi"}),
-        ],
-        stop_reason="tool_use",
-        usage=sample_usage,
-        raw_response=None,
-    ))
+    trace.add_turn(
+        Turn(
+            text_output="I'll create that file for you.",
+            tool_calls=[
+                ToolCall(
+                    id="tc_001", name="Write", input={"file_path": "/hello.txt", "content": "hi"}
+                ),
+            ],
+            stop_reason="tool_use",
+            usage=sample_usage,
+            raw_response=None,
+        )
+    )
     return trace
 
 
@@ -47,39 +53,50 @@ def multi_turn_trace(sample_usage):
     """3-turn trace: Read -> Write -> end_turn."""
     trace = Trace()
     # Turn 1: model calls Read
-    trace.add_turn(Turn(
-        text_output="Let me read that file.",
-        tool_calls=[
-            ToolCall(id="tc_001", name="Read", input={"file_path": "/hello.txt"}),
-        ],
-        stop_reason="tool_use",
-        usage=sample_usage,
-        raw_response=None,
-    ))
+    trace.add_turn(
+        Turn(
+            text_output="Let me read that file.",
+            tool_calls=[
+                ToolCall(id="tc_001", name="Read", input={"file_path": "/hello.txt"}),
+            ],
+            stop_reason="tool_use",
+            usage=sample_usage,
+            raw_response=None,
+        )
+    )
     # Turn 2: model calls Write
-    trace.add_turn(Turn(
-        text_output="Now I'll write the updated file.",
-        tool_calls=[
-            ToolCall(id="tc_002", name="Write", input={"file_path": "/hello.txt", "content": "updated"}),
-        ],
-        stop_reason="tool_use",
-        usage=sample_usage,
-        raw_response=None,
-    ))
+    trace.add_turn(
+        Turn(
+            text_output="Now I'll write the updated file.",
+            tool_calls=[
+                ToolCall(
+                    id="tc_002",
+                    name="Write",
+                    input={"file_path": "/hello.txt", "content": "updated"},
+                ),
+            ],
+            stop_reason="tool_use",
+            usage=sample_usage,
+            raw_response=None,
+        )
+    )
     # Turn 3: model finishes
-    trace.add_turn(Turn(
-        text_output="Done! I've updated the file.",
-        tool_calls=[],
-        stop_reason="end_turn",
-        usage=sample_usage,
-        raw_response=None,
-    ))
+    trace.add_turn(
+        Turn(
+            text_output="Done! I've updated the file.",
+            tool_calls=[],
+            stop_reason="end_turn",
+            usage=sample_usage,
+            raw_response=None,
+        )
+    )
     return trace
 
 
 @pytest.fixture
 def mock_anthropic_message(sample_usage):
     """Create a mock Anthropic Message response."""
+
     def _make(text="Hello!", tool_uses=None, stop_reason="end_turn"):
         msg = MagicMock()
         msg.stop_reason = stop_reason
@@ -106,6 +123,7 @@ def mock_anthropic_message(sample_usage):
         msg.usage.cache_creation_input_tokens = None
         msg.usage.cache_read_input_tokens = None
         return msg
+
     return _make
 
 

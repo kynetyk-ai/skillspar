@@ -55,9 +55,7 @@ class SnapshotDiff:
     test_diffs: list[TestDiff] = field(default_factory=list)
     added_tests: list[str] = field(default_factory=list)
     removed_tests: list[str] = field(default_factory=list)
-    summary: DiffSummary = field(
-        default_factory=lambda: DiffSummary(0, 0, 0, 0, 0)
-    )
+    summary: DiffSummary = field(default_factory=lambda: DiffSummary(0, 0, 0, 0, 0))
 
 
 def _build_test_index(snapshot: dict) -> dict[str, dict]:
@@ -126,9 +124,7 @@ def diff_snapshots(before: dict, after: dict) -> SnapshotDiff:
     before_hash = before.get("skill_file_hash")
     after_hash = after.get("skill_file_hash")
     skill_hash_changed = (
-        before_hash is not None
-        and after_hash is not None
-        and before_hash != after_hash
+        before_hash is not None and after_hash is not None and before_hash != after_hash
     )
 
     test_diffs: list[TestDiff] = []
@@ -159,11 +155,7 @@ def diff_snapshots(before: dict, after: dict) -> SnapshotDiff:
         a_bl_rate = a_bl.get("pass_rate") if a_bl else None
 
         # Steer erosion: baseline pass rate rose
-        steer_eroded = (
-            b_bl_rate is not None
-            and a_bl_rate is not None
-            and a_bl_rate > b_bl_rate
-        )
+        steer_eroded = b_bl_rate is not None and a_bl_rate is not None and a_bl_rate > b_bl_rate
 
         # Assertion flips
         flips = _diff_assertions(

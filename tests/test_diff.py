@@ -77,12 +77,16 @@ class TestPassRateImprovement:
 
 class TestSteerErosion:
     def test_detects_erosion(self):
-        before = _make_snapshot(tests=[
-            _make_test(baseline_summary={"pass_rate": 0.2}),
-        ])
-        after = _make_snapshot(tests=[
-            _make_test(baseline_summary={"pass_rate": 0.8}),
-        ])
+        before = _make_snapshot(
+            tests=[
+                _make_test(baseline_summary={"pass_rate": 0.2}),
+            ]
+        )
+        after = _make_snapshot(
+            tests=[
+                _make_test(baseline_summary={"pass_rate": 0.8}),
+            ]
+        )
         diff = diff_snapshots(before, after)
         assert diff.summary.steer_erosions == 1
         assert diff.test_diffs[0].steer_eroded is True
@@ -90,12 +94,16 @@ class TestSteerErosion:
         assert diff.test_diffs[0].baseline_pass_rate_after == 0.8
 
     def test_no_erosion_when_baseline_drops(self):
-        before = _make_snapshot(tests=[
-            _make_test(baseline_summary={"pass_rate": 0.8}),
-        ])
-        after = _make_snapshot(tests=[
-            _make_test(baseline_summary={"pass_rate": 0.3}),
-        ])
+        before = _make_snapshot(
+            tests=[
+                _make_test(baseline_summary={"pass_rate": 0.8}),
+            ]
+        )
+        after = _make_snapshot(
+            tests=[
+                _make_test(baseline_summary={"pass_rate": 0.3}),
+            ]
+        )
         diff = diff_snapshots(before, after)
         assert diff.summary.steer_erosions == 0
         assert diff.test_diffs[0].steer_eroded is False
@@ -135,12 +143,28 @@ class TestAddedRemovedTests:
 
 class TestAssertionFlips:
     def test_detects_assertion_flip(self):
-        before_runs = [{"assertions": [
-            {"type": "output_contains", "status": "passed", "details": {"substring": "hello"}},
-        ]}]
-        after_runs = [{"assertions": [
-            {"type": "output_contains", "status": "failed", "details": {"substring": "hello"}},
-        ]}]
+        before_runs = [
+            {
+                "assertions": [
+                    {
+                        "type": "output_contains",
+                        "status": "passed",
+                        "details": {"substring": "hello"},
+                    },
+                ]
+            }
+        ]
+        after_runs = [
+            {
+                "assertions": [
+                    {
+                        "type": "output_contains",
+                        "status": "failed",
+                        "details": {"substring": "hello"},
+                    },
+                ]
+            }
+        ]
         before = _make_snapshot(tests=[_make_test(runs=before_runs)])
         after = _make_snapshot(tests=[_make_test(runs=after_runs)])
         diff = diff_snapshots(before, after)
@@ -151,9 +175,17 @@ class TestAssertionFlips:
         assert flip.assertion_type == "output_contains"
 
     def test_no_flips_when_same(self):
-        runs = [{"assertions": [
-            {"type": "output_contains", "status": "passed", "details": {"substring": "hello"}},
-        ]}]
+        runs = [
+            {
+                "assertions": [
+                    {
+                        "type": "output_contains",
+                        "status": "passed",
+                        "details": {"substring": "hello"},
+                    },
+                ]
+            }
+        ]
         snap = _make_snapshot(tests=[_make_test(runs=runs)])
         diff = diff_snapshots(snap, snap)
         assert diff.test_diffs[0].assertion_flips == []
@@ -191,16 +223,20 @@ class TestMetadata:
         assert diff.after_timestamp == "2025-06-01T00:00:00"
 
     def test_multiple_tests_summary(self):
-        before = _make_snapshot(tests=[
-            _make_test(name="a", pass_rate=1.0),
-            _make_test(name="b", pass_rate=0.5),
-            _make_test(name="c", pass_rate=0.8),
-        ])
-        after = _make_snapshot(tests=[
-            _make_test(name="a", pass_rate=0.5),   # regression
-            _make_test(name="b", pass_rate=1.0),   # improvement
-            _make_test(name="c", pass_rate=0.8),   # unchanged
-        ])
+        before = _make_snapshot(
+            tests=[
+                _make_test(name="a", pass_rate=1.0),
+                _make_test(name="b", pass_rate=0.5),
+                _make_test(name="c", pass_rate=0.8),
+            ]
+        )
+        after = _make_snapshot(
+            tests=[
+                _make_test(name="a", pass_rate=0.5),  # regression
+                _make_test(name="b", pass_rate=1.0),  # improvement
+                _make_test(name="c", pass_rate=0.8),  # unchanged
+            ]
+        )
         diff = diff_snapshots(before, after)
         assert diff.summary.total_tests == 3
         assert diff.summary.regressions == 1

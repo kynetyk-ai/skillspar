@@ -35,6 +35,7 @@ def load_prefix_messages(
     if prefix_config.messages is not None:
         messages = list(prefix_config.messages)
     else:
+        assert prefix_config.file is not None
         messages = _load_external_prefix(eval_file, prefix_config.file)
 
     _validate_prefix_messages(messages)

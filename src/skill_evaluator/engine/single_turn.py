@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from anthropic import APIError, Anthropic
+from anthropic import Anthropic, APIError
 
 from skill_evaluator.config.schema import InputConfig, ResolvedConfig
 from skill_evaluator.engine.conversation import build_messages
@@ -27,21 +27,19 @@ def build_turn_from_response(response: Any) -> Turn:
         if block.type == "text":
             text_parts.append(block.text)
         elif block.type == "tool_use":
-            tool_calls.append(ToolCall(
-                id=block.id,
-                name=block.name,
-                input=block.input,
-            ))
+            tool_calls.append(
+                ToolCall(
+                    id=block.id,
+                    name=block.name,
+                    input=block.input,
+                )
+            )
 
     usage = TokenUsage(
         input_tokens=response.usage.input_tokens,
         output_tokens=response.usage.output_tokens,
-        cache_creation_input_tokens=getattr(
-            response.usage, "cache_creation_input_tokens", None
-        ),
-        cache_read_input_tokens=getattr(
-            response.usage, "cache_read_input_tokens", None
-        ),
+        cache_creation_input_tokens=getattr(response.usage, "cache_creation_input_tokens", None),
+        cache_read_input_tokens=getattr(response.usage, "cache_read_input_tokens", None),
     )
 
     return Turn(
@@ -82,8 +80,11 @@ class SingleTurnExecutor:
 
         logger.debug(
             "API call: model=%s, max_tokens=%d, temperature=%s, tools=%d, messages=%d",
-            self.config.model, self.config.max_tokens,
-            self.config.temperature, len(tools or []), len(messages),
+            self.config.model,
+            self.config.max_tokens,
+            self.config.temperature,
+            len(tools or []),
+            len(messages),
         )
 
         try:
@@ -94,7 +95,9 @@ class SingleTurnExecutor:
 
         logger.debug(
             "API response: stop_reason=%s, input_tokens=%d, output_tokens=%d",
-            response.stop_reason, response.usage.input_tokens, response.usage.output_tokens,
+            response.stop_reason,
+            response.usage.input_tokens,
+            response.usage.output_tokens,
         )
         return self._build_trace(response)
 

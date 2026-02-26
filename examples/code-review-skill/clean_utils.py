@@ -1,11 +1,11 @@
 """Utility functions for date formatting and validation."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def format_iso(dt: datetime) -> str:
     """Format a datetime as an ISO 8601 string in UTC."""
-    utc_dt = dt.astimezone(timezone.utc)
+    utc_dt = dt.astimezone(UTC)
     return utc_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 

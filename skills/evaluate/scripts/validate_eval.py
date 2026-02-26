@@ -68,12 +68,37 @@ ASSERTION_VALID_FIELDS: dict[str, list[str]] = {
     "llm_judge": ["type", "criteria", "model"],
 }
 
-VALID_SUITE_FIELDS = {"suite", "skill", "defaults", "tools", "tests", "context", "conversation_prefix"}
-VALID_DEFAULTS_FIELDS = {
-    "system_prompt", "model", "judge_model", "max_tokens", "temperature",
-    "runs", "pass_threshold", "max_retries", "concurrency", "enable_caching",
+VALID_SUITE_FIELDS = {
+    "suite",
+    "skill",
+    "defaults",
+    "tools",
+    "tests",
+    "context",
+    "conversation_prefix",
 }
-VALID_SINGLE_TURN_FIELDS = {"type", "name", "input", "assertions", "runs", "pass_threshold", "baseline", "context"}
+VALID_DEFAULTS_FIELDS = {
+    "system_prompt",
+    "model",
+    "judge_model",
+    "max_tokens",
+    "temperature",
+    "runs",
+    "pass_threshold",
+    "max_retries",
+    "concurrency",
+    "enable_caching",
+}
+VALID_SINGLE_TURN_FIELDS = {
+    "type",
+    "name",
+    "input",
+    "assertions",
+    "runs",
+    "pass_threshold",
+    "baseline",
+    "context",
+}
 VALID_MULTI_TURN_FIELDS = VALID_SINGLE_TURN_FIELDS | {"max_turns", "tool_responses"}
 
 
@@ -135,8 +160,7 @@ def _validate_suite(raw: dict) -> list[str]:
     # Required fields
     if "suite" not in raw:
         errors.append(
-            "suite — missing required field\n"
-            "  The top-level \"suite\" field names this eval suite."
+            'suite — missing required field\n  The top-level "suite" field names this eval suite.'
         )
     elif not isinstance(raw["suite"], str):
         errors.append(f"suite — wrong type\n  Expected string, got {type(raw['suite']).__name__}")
@@ -144,7 +168,7 @@ def _validate_suite(raw: dict) -> list[str]:
     if "skill" not in raw:
         errors.append(
             "skill — missing required field\n"
-            "  The top-level \"skill\" field is a relative path to the SKILL.md being tested."
+            '  The top-level "skill" field is a relative path to the SKILL.md being tested.'
         )
     elif not isinstance(raw["skill"], str):
         errors.append(f"skill — wrong type\n  Expected string, got {type(raw['skill']).__name__}")
@@ -152,7 +176,7 @@ def _validate_suite(raw: dict) -> list[str]:
     if "tests" not in raw:
         errors.append(
             "tests — missing required field\n"
-            "  The \"tests\" field must be a list of test definitions."
+            '  The "tests" field must be a list of test definitions.'
         )
     elif not isinstance(raw["tests"], list):
         errors.append(f"tests — wrong type\n  Expected list, got {type(raw['tests']).__name__}")
@@ -163,13 +187,15 @@ def _validate_suite(raw: dict) -> list[str]:
             suggestion = _suggest_typo(key, list(VALID_SUITE_FIELDS))
             msg = f"{key} — unknown field"
             if suggestion:
-                msg += f"\n  Did you mean \"{suggestion}\"?"
+                msg += f'\n  Did you mean "{suggestion}"?'
             errors.append(msg)
 
     # Validate defaults
     if "defaults" in raw:
         if not isinstance(raw["defaults"], dict):
-            errors.append(f"defaults — wrong type\n  Expected mapping, got {type(raw['defaults']).__name__}")
+            errors.append(
+                f"defaults — wrong type\n  Expected mapping, got {type(raw['defaults']).__name__}"
+            )
         else:
             errors.extend(_validate_defaults(raw["defaults"]))
 
@@ -181,7 +207,9 @@ def _validate_suite(raw: dict) -> list[str]:
     if isinstance(raw.get("tests"), list):
         for i, test in enumerate(raw["tests"]):
             if not isinstance(test, dict):
-                errors.append(f"{_path('tests', i)} — expected a mapping, got {type(test).__name__}")
+                errors.append(
+                    f"{_path('tests', i)} — expected a mapping, got {type(test).__name__}"
+                )
                 continue
             errors.extend(_validate_test(test, i))
 
@@ -197,36 +225,51 @@ def _validate_defaults(defaults: dict) -> list[str]:
             suggestion = _suggest_typo(key, list(VALID_DEFAULTS_FIELDS))
             msg = f"defaults.{key} — unknown field"
             if suggestion:
-                msg += f"\n  Did you mean \"{suggestion}\"?"
+                msg += f'\n  Did you mean "{suggestion}"?'
             errors.append(msg)
 
     runs = defaults.get("runs")
     if runs is not None:
         if not isinstance(runs, int):
-            errors.append(f"defaults.runs — wrong type\n  Expected integer, got {type(runs).__name__}")
+            errors.append(
+                f"defaults.runs — wrong type\n  Expected integer, got {type(runs).__name__}"
+            )
         elif runs < 1:
             errors.append(f"defaults.runs — invalid value\n  runs must be >= 1, got {runs}")
 
     pt = defaults.get("pass_threshold")
     if pt is not None:
         if not isinstance(pt, (int, float)):
-            errors.append(f"defaults.pass_threshold — wrong type\n  Expected number, got {type(pt).__name__}")
+            errors.append(
+                f"defaults.pass_threshold — wrong type\n  Expected number, got {type(pt).__name__}"
+            )
         elif pt <= 0.0 or pt > 1.0:
-            errors.append(f"defaults.pass_threshold — invalid value\n  pass_threshold must be in (0.0, 1.0], got {pt}")
+            errors.append(
+                "defaults.pass_threshold — invalid value\n"
+                f"  pass_threshold must be in (0.0, 1.0], got {pt}"
+            )
 
     conc = defaults.get("concurrency")
     if conc is not None:
         if not isinstance(conc, int):
-            errors.append(f"defaults.concurrency — wrong type\n  Expected integer, got {type(conc).__name__}")
+            errors.append(
+                f"defaults.concurrency — wrong type\n  Expected integer, got {type(conc).__name__}"
+            )
         elif conc < 1:
-            errors.append(f"defaults.concurrency — invalid value\n  concurrency must be >= 1, got {conc}")
+            errors.append(
+                f"defaults.concurrency — invalid value\n  concurrency must be >= 1, got {conc}"
+            )
 
     mr = defaults.get("max_retries")
     if mr is not None:
         if not isinstance(mr, int):
-            errors.append(f"defaults.max_retries — wrong type\n  Expected integer, got {type(mr).__name__}")
+            errors.append(
+                f"defaults.max_retries — wrong type\n  Expected integer, got {type(mr).__name__}"
+            )
         elif mr < 0:
-            errors.append(f"defaults.max_retries — invalid value\n  max_retries must be >= 0, got {mr}")
+            errors.append(
+                f"defaults.max_retries — invalid value\n  max_retries must be >= 0, got {mr}"
+            )
 
     return errors
 
@@ -244,14 +287,16 @@ def _validate_conversation_prefix(prefix) -> list[str]:
     has_file = "file" in prefix
 
     if has_messages and has_file:
-        errors.append(f"{base} — specify either \"messages\" or \"file\", not both")
+        errors.append(f'{base} — specify either "messages" or "file", not both')
     elif not has_messages and not has_file:
-        errors.append(f"{base} — one of \"messages\" or \"file\" is required")
+        errors.append(f'{base} — one of "messages" or "file" is required')
 
     if has_messages:
         msgs = prefix["messages"]
         if not isinstance(msgs, list):
-            errors.append(f"{base}.messages — wrong type\n  Expected list, got {type(msgs).__name__}")
+            errors.append(
+                f"{base}.messages — wrong type\n  Expected list, got {type(msgs).__name__}"
+            )
         elif len(msgs) == 0:
             errors.append(f"{base}.messages — must not be empty")
         else:
@@ -262,7 +307,9 @@ def _validate_conversation_prefix(prefix) -> list[str]:
                 errors.extend(_validate_message(msg, f"{base}.messages[{i}]"))
 
     if has_file and not isinstance(prefix["file"], str):
-        errors.append(f"{base}.file — wrong type\n  Expected string, got {type(prefix['file']).__name__}")
+        errors.append(
+            f"{base}.file — wrong type\n  Expected string, got {type(prefix['file']).__name__}"
+        )
 
     return errors
 
@@ -278,8 +325,8 @@ def _validate_test(test: dict, idx: int) -> list[str]:
     if test_type is None:
         errors.append(
             f"{prefix}.type — missing required field\n"
-            f"  In test \"{test_name}\"\n"
-            f"  Every test needs a \"type\" field.\n"
+            f'  In test "{test_name}"\n'
+            f'  Every test needs a "type" field.\n'
             f"  Valid types: {', '.join(VALID_TEST_TYPES)}"
         )
         return errors  # can't validate further without type
@@ -287,9 +334,9 @@ def _validate_test(test: dict, idx: int) -> list[str]:
     if test_type not in VALID_TEST_TYPES:
         errors.append(
             f"{prefix} — invalid test type\n"
-            f"  You wrote: type: \"{test_type}\"\n"
+            f'  You wrote: type: "{test_type}"\n'
             f"  Valid types: {', '.join(VALID_TEST_TYPES)}\n"
-            f"  Fix: Change to type: \"single_turn\" or type: \"multi_turn\""
+            f'  Fix: Change to type: "single_turn" or type: "multi_turn"'
         )
         return errors
 
@@ -297,23 +344,25 @@ def _validate_test(test: dict, idx: int) -> list[str]:
     if "name" not in test:
         errors.append(
             f"{prefix}.name — missing required field\n"
-            f"  Every test needs a \"name\" field describing what it checks."
+            f'  Every test needs a "name" field describing what it checks.'
         )
 
     # input field
     if "input" not in test:
         errors.append(
             f"{prefix}.input — missing required field\n"
-            f"  In test \"{test_name}\"\n"
-            f"  Every test needs an \"input\" with a \"messages\" list.\n"
+            f'  In test "{test_name}"\n'
+            f'  Every test needs an "input" with a "messages" list.\n'
             f"  Example:\n"
             f"    input:\n"
             f"      messages:\n"
             f"        - role: user\n"
-            f"          content: \"Your prompt here\""
+            f'          content: "Your prompt here"'
         )
     elif not isinstance(test["input"], dict):
-        errors.append(f"{prefix}.input — wrong type\n  Expected mapping, got {type(test['input']).__name__}")
+        errors.append(
+            f"{prefix}.input — wrong type\n  Expected mapping, got {type(test['input']).__name__}"
+        )
     else:
         errors.extend(_validate_input(test["input"], prefix))
 
@@ -321,19 +370,24 @@ def _validate_test(test: dict, idx: int) -> list[str]:
     if "assertions" not in test:
         errors.append(
             f"{prefix}.assertions — missing required field\n"
-            f"  In test \"{test_name}\"\n"
-            f"  Every test needs an \"assertions\" list (can be empty).\n"
+            f'  In test "{test_name}"\n'
+            f'  Every test needs an "assertions" list (can be empty).\n'
             f"  Example:\n"
             f"    assertions:\n"
             f"      - type: output_contains\n"
-            f"        value: \"expected text\""
+            f'        value: "expected text"'
         )
     elif not isinstance(test["assertions"], list):
-        errors.append(f"{prefix}.assertions — wrong type\n  Expected list, got {type(test['assertions']).__name__}")
+        errors.append(
+            f"{prefix}.assertions — wrong type\n"
+            f"  Expected list, got {type(test['assertions']).__name__}"
+        )
     else:
         for j, assertion in enumerate(test["assertions"]):
             if not isinstance(assertion, dict):
-                errors.append(f"{prefix}.assertions[{j}] — expected a mapping, got {type(assertion).__name__}")
+                errors.append(
+                    f"{prefix}.assertions[{j}] — expected a mapping, got {type(assertion).__name__}"
+                )
                 continue
             errors.extend(_validate_assertion(assertion, prefix, j))
 
@@ -350,13 +404,15 @@ def _validate_test(test: dict, idx: int) -> list[str]:
                     errors.extend(_validate_tool_response(tr, f"{prefix}.tool_responses[{k}]"))
 
     # Unknown fields
-    valid_fields = VALID_MULTI_TURN_FIELDS if test_type == "multi_turn" else VALID_SINGLE_TURN_FIELDS
+    valid_fields = (
+        VALID_MULTI_TURN_FIELDS if test_type == "multi_turn" else VALID_SINGLE_TURN_FIELDS
+    )
     for key in test:
         if key not in valid_fields:
             suggestion = _suggest_typo(key, list(valid_fields))
-            msg = f"{prefix}.{key} — unknown field \"{key}\""
+            msg = f'{prefix}.{key} — unknown field "{key}"'
             if suggestion:
-                msg += f"\n  Did you mean \"{suggestion}\"?"
+                msg += f'\n  Did you mean "{suggestion}"?'
             errors.append(msg)
 
     return errors
@@ -368,12 +424,12 @@ def _validate_input(inp: dict, prefix: str) -> list[str]:
     if "messages" not in inp:
         errors.append(
             f"{prefix}.input.messages — missing required field\n"
-            f"  The \"input\" field requires a \"messages\" list.\n"
+            f'  The "input" field requires a "messages" list.\n'
             f"  Example:\n"
             f"    input:\n"
             f"      messages:\n"
             f"        - role: user\n"
-            f"          content: \"Your prompt here\""
+            f'          content: "Your prompt here"'
         )
     elif not isinstance(inp["messages"], list):
         errors.append(
@@ -397,12 +453,12 @@ def _validate_message(msg, path: str) -> list[str]:
     if role is None:
         errors.append(
             f"{path}.role — missing required field\n"
-            f"  Messages need a \"role\" field. Valid roles: {', '.join(VALID_MESSAGE_ROLES)}"
+            f'  Messages need a "role" field. Valid roles: {", ".join(VALID_MESSAGE_ROLES)}'
         )
     elif role not in VALID_MESSAGE_ROLES:
         errors.append(
             f"{path} — invalid message role\n"
-            f"  You wrote: role: \"{role}\"\n"
+            f'  You wrote: role: "{role}"\n'
             f"  Valid roles: {', '.join(VALID_MESSAGE_ROLES)}"
         )
 
@@ -418,7 +474,7 @@ def _validate_assertion(assertion: dict, test_prefix: str, idx: int) -> list[str
     if atype is None:
         errors.append(
             f"{path}.type — missing required field\n"
-            f"  Every assertion needs a \"type\" field.\n"
+            f'  Every assertion needs a "type" field.\n'
             f"  Valid types: {', '.join(VALID_ASSERTION_TYPES)}"
         )
         return errors
@@ -426,7 +482,7 @@ def _validate_assertion(assertion: dict, test_prefix: str, idx: int) -> list[str
     if atype not in VALID_ASSERTION_TYPES:
         errors.append(
             f"{path} — unknown assertion type\n"
-            f"  You wrote: type: \"{atype}\"\n"
+            f'  You wrote: type: "{atype}"\n'
             f"  Valid types: {', '.join(VALID_ASSERTION_TYPES)}\n"
             f"  Fix: Use one of the valid assertion types listed above."
         )
@@ -435,7 +491,7 @@ def _validate_assertion(assertion: dict, test_prefix: str, idx: int) -> list[str
     # Check required fields for this assertion type
     for field, expected_type in ASSERTION_REQUIRED_FIELDS[atype]:
         if field not in assertion:
-            errors.append(f"{path}.{field} — missing required field for \"{atype}\" assertion")
+            errors.append(f'{path}.{field} — missing required field for "{atype}" assertion')
         elif not isinstance(assertion[field], expected_type):
             errors.append(
                 f"{path}.{field} — wrong type\n"
@@ -443,7 +499,11 @@ def _validate_assertion(assertion: dict, test_prefix: str, idx: int) -> list[str
             )
 
     # Validate regex pattern
-    if atype == "output_matches_regex" and "pattern" in assertion and isinstance(assertion["pattern"], str):
+    if (
+        atype == "output_matches_regex"
+        and "pattern" in assertion
+        and isinstance(assertion["pattern"], str)
+    ):
         try:
             re.compile(assertion["pattern"])
         except re.error as e:
@@ -454,9 +514,9 @@ def _validate_assertion(assertion: dict, test_prefix: str, idx: int) -> list[str
     for key in assertion:
         if key not in valid:
             suggestion = _suggest_typo(key, valid)
-            msg = f"{path}.{key} — unknown field \"{key}\" for \"{atype}\" assertion"
+            msg = f'{path}.{key} — unknown field "{key}" for "{atype}" assertion'
             if suggestion:
-                msg += f"\n  Did you mean \"{suggestion}\"?"
+                msg += f'\n  Did you mean "{suggestion}"?'
             errors.append(msg)
 
     return errors
@@ -473,13 +533,16 @@ def _validate_tool_response(tr: dict, path: str) -> list[str]:
     has_responses = "responses" in tr
 
     if has_response and has_responses:
-        errors.append(f"{path} — specify either \"response\" or \"responses\", not both")
+        errors.append(f'{path} — specify either "response" or "responses", not both')
     elif not has_response and not has_responses:
-        errors.append(f"{path} — one of \"response\" or \"responses\" is required")
+        errors.append(f'{path} — one of "response" or "responses" is required')
 
     if has_responses:
         if not isinstance(tr["responses"], list):
-            errors.append(f"{path}.responses — wrong type\n  Expected list, got {type(tr['responses']).__name__}")
+            errors.append(
+                f"{path}.responses — wrong type\n"
+                f"  Expected list, got {type(tr['responses']).__name__}"
+            )
         elif len(tr["responses"]) == 0:
             errors.append(f"{path}.responses — must not be empty")
 
@@ -513,9 +576,9 @@ def _run_semantic_checks(raw: dict) -> list[str]:
         # multi_turn without tool_responses
         if test_type == "multi_turn" and not test.get("tool_responses"):
             warnings.append(
-                f"tests[{i}] \"{test_name}\" — multi_turn test with no tool_responses\n"
+                f'tests[{i}] "{test_name}" — multi_turn test with no tool_responses\n'
                 f"  A multi_turn test needs tool_responses to script how tools reply.\n"
-                f"  If you don't need tool interaction, use type: \"single_turn\" instead."
+                f'  If you don\'t need tool interaction, use type: "single_turn" instead.'
             )
 
         # llm_judge criteria too short
@@ -526,10 +589,11 @@ def _run_semantic_checks(raw: dict) -> list[str]:
                 criteria = assertion.get("criteria", "")
                 if isinstance(criteria, str) and len(criteria) < 10:
                     warnings.append(
-                        f"tests[{i}].assertions[{j}] \"{test_name}\" — llm_judge criteria is very short "
-                        f"({len(criteria)} chars)\n"
-                        f"  You wrote: \"{criteria}\"\n"
-                        f"  Criteria should be a detailed description of what to evaluate (at least a sentence)."
+                        f'tests[{i}].assertions[{j}] "{test_name}" — '
+                        f"llm_judge criteria is very short ({len(criteria)} chars)\n"
+                        f'  You wrote: "{criteria}"\n'
+                        f"  Criteria should be a detailed description of "
+                        f"what to evaluate (at least a sentence)."
                     )
 
         # skill_only checks
@@ -573,13 +637,16 @@ def _check_tool_result_ids(test: dict, idx: int, name: str, warnings: list[str])
             tool_use_id = msg.get("tool_use_id")
             if tool_use_id and tool_use_id not in known_ids:
                 warnings.append(
-                    f"tests[{idx}] \"{name}\" — tool_result references unknown tool_use_id \"{tool_use_id}\"\n"
-                    f"  No prior assistant message has a tool_call with id: \"{tool_use_id}\".\n"
+                    f'tests[{idx}] "{name}" — tool_result references '
+                    f'unknown tool_use_id "{tool_use_id}"\n'
+                    f'  No prior assistant message has a tool_call with id: "{tool_use_id}".\n'
                     f"  Add a matching tool_call in the assistant message before this tool_result."
                 )
 
 
-def _check_undeclared_tools(test: dict, idx: int, name: str, declared: list[str], warnings: list[str]) -> None:
+def _check_undeclared_tools(
+    test: dict, idx: int, name: str, declared: list[str], warnings: list[str]
+) -> None:
     """Check that tool assertions reference tools declared in the suite's tools list."""
     for j, assertion in enumerate(test.get("assertions", [])):
         if not isinstance(assertion, dict):
@@ -590,20 +657,21 @@ def _check_undeclared_tools(test: dict, idx: int, name: str, declared: list[str]
             tool = assertion.get("tool")
             if tool and tool not in declared:
                 warnings.append(
-                    f"tests[{idx}].assertions[{j}] \"{name}\" — references tool \"{tool}\" "
+                    f'tests[{idx}].assertions[{j}] "{name}" — references tool "{tool}" '
                     f"not declared in suite tools\n"
                     f"  Declared tools: {', '.join(declared)}\n"
-                    f"  Either add \"{tool}\" to the top-level tools list or fix the assertion."
+                    f'  Either add "{tool}" to the top-level tools list or fix the assertion.'
                 )
         # tool_sequence
         if atype == "tool_sequence":
             for tool_name in assertion.get("tools", []):
                 if tool_name not in declared:
                     warnings.append(
-                        f"tests[{idx}].assertions[{j}] \"{name}\" — tool_sequence references "
-                        f"\"{tool_name}\" not declared in suite tools\n"
+                        f'tests[{idx}].assertions[{j}] "{name}" — tool_sequence references '
+                        f'"{tool_name}" not declared in suite tools\n'
                         f"  Declared tools: {', '.join(declared)}\n"
-                        f"  Either add \"{tool_name}\" to the top-level tools list or fix the assertion."
+                        f'  Either add "{tool_name}" to the top-level '
+                        f"tools list or fix the assertion."
                     )
                     break  # one warning per assertion is enough
 
@@ -646,10 +714,12 @@ def _check_skill_only(test: dict, idx: int, name: str, warnings: list[str]) -> N
                 asst_msg = messages[asst_idx]
                 if isinstance(asst_msg, dict) and not asst_msg.get("skill_only"):
                     warnings.append(
-                        f"tests[{idx}] \"{name}\" — orphaned skill_only pair\n"
-                        f"  input.messages[{mi}] (tool_result, tool_use_id=\"{tuid}\") is skill_only: true\n"
+                        f'tests[{idx}] "{name}" — orphaned skill_only pair\n'
+                        f"  input.messages[{mi}] (tool_result, "
+                        f'tool_use_id="{tuid}") is skill_only: true\n'
                         f"  but the matching assistant message at index {asst_idx} is not.\n"
-                        f"  Baseline would have the tool_call but no result. Mark both as skill_only: true."
+                        f"  Baseline would have the tool_call but no result. "
+                        f"Mark both as skill_only: true."
                     )
 
         if role == "assistant" and is_skill_only:
@@ -662,16 +732,18 @@ def _check_skill_only(test: dict, idx: int, name: str, warnings: list[str]) -> N
                     tr_msg = messages[tr_idx]
                     if isinstance(tr_msg, dict) and not tr_msg.get("skill_only"):
                         warnings.append(
-                            f"tests[{idx}] \"{name}\" — orphaned skill_only pair\n"
-                            f"  input.messages[{mi}] (assistant with tool_call id=\"{tc_id}\") is skill_only: true\n"
+                            f'tests[{idx}] "{name}" — orphaned skill_only pair\n'
+                            f"  input.messages[{mi}] (assistant with "
+                            f'tool_call id="{tc_id}") is skill_only: true\n'
                             f"  but the matching tool_result at index {tr_idx} is not.\n"
-                            f"  Baseline would have the result but no call. Mark both as skill_only: true."
+                            f"  Baseline would have the result but no call. "
+                            f"Mark both as skill_only: true."
                         )
 
     # skill_only without baseline
     if has_skill_only and not test.get("baseline"):
         warnings.append(
-            f"tests[{idx}] \"{name}\" — skill_only messages without baseline\n"
+            f'tests[{idx}] "{name}" — skill_only messages without baseline\n'
             f"  Messages are marked skill_only: true but baseline: false (or omitted).\n"
             f"  skill_only has no effect without baseline enabled."
         )
@@ -697,7 +769,10 @@ def _format_success(raw: dict) -> str:
                 type_counts[a["type"]] += 1
 
     suite_name = raw.get("suite", "unnamed")
-    lines = [f"VALIDATION PASSED: suite \"{suite_name}\" ({total_tests} tests, {total_assertions} assertions)"]
+    lines = [
+        f'VALIDATION PASSED: suite "{suite_name}" '
+        f"({total_tests} tests, {total_assertions} assertions)"
+    ]
 
     if type_counts:
         lines.append("")

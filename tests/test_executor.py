@@ -28,15 +28,14 @@ tests:
         eval_file = tmp_path / "test.eval.yaml"
         eval_file.write_text(yaml_content)
 
-        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
-            text="Hello!"
-        )
+        mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hello!")
 
         suite = load_eval_suite(eval_file)
         config = resolve_config(suite.defaults)
 
         # Monkeypatch the Anthropic client via runner
         from unittest.mock import patch
+
         with patch("skill_evaluator.runner.Anthropic", return_value=mock_anthropic_client):
             result = execute_suite(eval_file, suite, config)
 

@@ -13,10 +13,7 @@ def build_skill_messages(
     skill_body: str, *, cache_control: dict[str, str] | None = None
 ) -> list[MessageConfig]:
     """Build a user message containing the skill body with contextual framing."""
-    framed = (
-        "The following skill has been activated for this task:\n\n"
-        f"{skill_body}"
-    )
+    framed = f"The following skill has been activated for this task:\n\n{skill_body}"
     return [MessageConfig(role="user", content=framed, cache_control=cache_control)]
 
 
@@ -34,12 +31,18 @@ def build_messages(messages: list[MessageConfig]) -> list[dict]:
     for msg in messages:
         if msg.role == "user":
             if msg.cache_control:
-                api_messages.append({
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": msg.content or "", "cache_control": msg.cache_control}
-                    ],
-                })
+                api_messages.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": msg.content or "",
+                                "cache_control": msg.cache_control,
+                            }
+                        ],
+                    }
+                )
             else:
                 api_messages.append({"role": "user", "content": msg.content or ""})
 
@@ -50,19 +53,23 @@ def build_messages(messages: list[MessageConfig]) -> list[dict]:
                 content.append(text_block)
             if msg.tool_calls:
                 for tc in msg.tool_calls:
-                    content.append({
-                        "type": "tool_use",
-                        "id": tc.id,
-                        "name": tc.name,
-                        "input": tc.input,
-                    })
+                    content.append(
+                        {
+                            "type": "tool_use",
+                            "id": tc.id,
+                            "name": tc.name,
+                            "input": tc.input,
+                        }
+                    )
             # Add cache_control to the last content block for assistant messages
             if msg.cache_control and content:
                 content[-1]["cache_control"] = msg.cache_control
-            api_messages.append({
-                "role": "assistant",
-                "content": content if content else (msg.content or ""),
-            })
+            api_messages.append(
+                {
+                    "role": "assistant",
+                    "content": content if content else (msg.content or ""),
+                }
+            )
 
         elif msg.role == "tool_result":
             tool_result_block = {
@@ -78,15 +85,19 @@ def build_messages(messages: list[MessageConfig]) -> list[dict]:
                 else:
                     # Previous user message had plain text — shouldn't happen
                     # for tool_result merging, but handle gracefully
-                    api_messages.append({
+                    api_messages.append(
+                        {
+                            "role": "user",
+                            "content": [tool_result_block],
+                        }
+                    )
+            else:
+                api_messages.append(
+                    {
                         "role": "user",
                         "content": [tool_result_block],
-                    })
-            else:
-                api_messages.append({
-                    "role": "user",
-                    "content": [tool_result_block],
-                })
+                    }
+                )
 
         else:
             raise ConversationBuildError(f"Unknown message role: {msg.role}")

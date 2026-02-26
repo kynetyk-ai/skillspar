@@ -1,6 +1,7 @@
 """Tests for conversation_prefix.skill_position — message ordering and caching."""
 
 import pytest
+from pydantic import ValidationError
 
 from skill_evaluator.config.loader import load_eval_suite
 from skill_evaluator.config.schema import (
@@ -10,10 +11,10 @@ from skill_evaluator.config.schema import (
 from skill_evaluator.engine.conversation import build_skill_messages
 from skill_evaluator.runner import SuiteRunner
 
-
 # ---------------------------------------------------------------------------
 # Schema tests
 # ---------------------------------------------------------------------------
+
 
 class TestSkillPositionSchema:
     def test_default_is_top(self):
@@ -36,7 +37,7 @@ class TestSkillPositionSchema:
         assert cfg.skill_position == "bottom"
 
     def test_invalid_position_rejected(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ConversationPrefixConfig(
                 skill_position="invalid",
                 messages=[
@@ -49,6 +50,7 @@ class TestSkillPositionSchema:
 # ---------------------------------------------------------------------------
 # build_skill_messages cache_control tests
 # ---------------------------------------------------------------------------
+
 
 class TestBuildSkillMessagesCache:
     def test_no_cache_by_default(self):
@@ -63,6 +65,7 @@ class TestBuildSkillMessagesCache:
 # ---------------------------------------------------------------------------
 # Runner integration — message ordering and caching
 # ---------------------------------------------------------------------------
+
 
 def _make_suite_files(tmp_path, skill_position=None):
     """Create minimal eval suite files with optional skill_position."""
@@ -147,7 +150,9 @@ class TestTopMode:
         assert "Prior assistant reply" in texts[1]
         assert "Test question" in texts[2]
 
-    def test_skill_message_has_cache_control(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+    def test_skill_message_has_cache_control(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
         eval_file = _make_suite_files(tmp_path)
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hi")
 
@@ -163,7 +168,9 @@ class TestTopMode:
         skill_block = first_content[0]
         assert skill_block.get("cache_control") == {"type": "ephemeral"}
 
-    def test_last_prefix_message_has_cache_control(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+    def test_last_prefix_message_has_cache_control(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
         eval_file = _make_suite_files(tmp_path)
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hi")
 
@@ -205,7 +212,9 @@ class TestBottomMode:
         assert "skill has been activated" in texts[2]
         assert "Test question" in texts[2]  # coalesced with skill
 
-    def test_skill_message_has_cache_control(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+    def test_skill_message_has_cache_control(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
         eval_file = _make_suite_files(tmp_path, skill_position="bottom")
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(text="Hi")
 
@@ -221,7 +230,9 @@ class TestBottomMode:
         skill_block = content[0]
         assert skill_block.get("cache_control") == {"type": "ephemeral"}
 
-    def test_last_prefix_message_has_cache_control(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+    def test_last_prefix_message_has_cache_control(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
         """In bottom mode, the last prefix message gets cache_control as a shared
         breakpoint across skill and baseline runs."""
         eval_file = _make_suite_files(tmp_path, skill_position="bottom")
@@ -243,7 +254,9 @@ class TestBottomMode:
 class TestNoPrefixNoSkillCache:
     """Without a conversation_prefix, skill messages should not get cache_control."""
 
-    def test_no_prefix_no_skill_cache(self, tmp_path, mock_anthropic_client, mock_anthropic_message):
+    def test_no_prefix_no_skill_cache(
+        self, tmp_path, mock_anthropic_client, mock_anthropic_message
+    ):
         skill_dir = tmp_path / "skills"
         skill_dir.mkdir()
         (skill_dir / "SKILL.md").write_text("---\nname: test\n---\nSkill body")

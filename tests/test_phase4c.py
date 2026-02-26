@@ -1,7 +1,5 @@
 """Tests for Phase 4C features: duration, metadata, cache reporting, exit codes."""
 
-import json
-import xml.etree.ElementTree as ET
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
@@ -19,25 +17,27 @@ from skill_evaluator.reporting.console import (
 from skill_evaluator.reporting.json_report import JsonReporter
 from skill_evaluator.reporting.junit import JunitReporter
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_trace(input_tokens=100, output_tokens=50, cache_creation=None, cache_read=None):
     trace = Trace()
-    trace.add_turn(Turn(
-        text_output="Hello!",
-        tool_calls=[],
-        stop_reason="end_turn",
-        usage=TokenUsage(
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            cache_creation_input_tokens=cache_creation,
-            cache_read_input_tokens=cache_read,
-        ),
-        raw_response=None,
-    ))
+    trace.add_turn(
+        Turn(
+            text_output="Hello!",
+            tool_calls=[],
+            stop_reason="end_turn",
+            usage=TokenUsage(
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                cache_creation_input_tokens=cache_creation,
+                cache_read_input_tokens=cache_read,
+            ),
+            raw_response=None,
+        )
+    )
     return trace
 
 
@@ -45,7 +45,9 @@ def _pass_result(name="test", trace=None, duration=None):
     return TestResult(
         test_name=name,
         assertion_results=[
-            AssertionResult(status=AssertionStatus.PASSED, assertion_type="stop_reason", message="ok"),
+            AssertionResult(
+                status=AssertionStatus.PASSED, assertion_type="stop_reason", message="ok"
+            ),
         ],
         trace=trace,
         duration_seconds=duration,
@@ -188,19 +190,23 @@ class TestJsonReportMetadata:
         assert report["skill_file_hash"] == "deadbeef"
 
     def test_judge_model_in_defaults(self):
-        suite = _make_suite(defaults={
-            "model": "claude-sonnet-4-5-20250929",
-            "judge_model": "claude-opus-4-20250514",
-        })
+        suite = _make_suite(
+            defaults={
+                "model": "claude-sonnet-4-5-20250929",
+                "judge_model": "claude-opus-4-20250514",
+            }
+        )
         result = SuiteResult(suite_name="test", test_results=[])
         report = JsonReporter().build_report(suite, result)
         assert report["defaults"]["judge_model"] == "claude-opus-4-20250514"
 
     def test_system_prompt_in_defaults(self):
-        suite = _make_suite(defaults={
-            "model": "claude-sonnet-4-5-20250929",
-            "system_prompt": "You are helpful.",
-        })
+        suite = _make_suite(
+            defaults={
+                "model": "claude-sonnet-4-5-20250929",
+                "system_prompt": "You are helpful.",
+            }
+        )
         result = SuiteResult(suite_name="test", test_results=[])
         report = JsonReporter().build_report(suite, result)
         assert report["defaults"]["system_prompt"] == "You are helpful."
@@ -308,6 +314,7 @@ class TestJsonPerRunCost:
 class TestConsoleReporterCostCache:
     def test_verbose_shows_cost(self):
         from io import StringIO
+
         from rich.console import Console
 
         output = StringIO()
@@ -329,6 +336,7 @@ class TestConsoleReporterCostCache:
 
     def test_verbose_shows_cache(self):
         from io import StringIO
+
         from rich.console import Console
 
         output = StringIO()
@@ -354,6 +362,7 @@ class TestConsoleReporterCostCache:
 
     def test_non_verbose_hides_cost_cache(self):
         from io import StringIO
+
         from rich.console import Console
 
         output = StringIO()
@@ -446,12 +455,18 @@ class TestExitCodes:
             test_results=[
                 TestRunGroup(
                     test_name="t",
-                    runs=[TestResult(
-                        test_name="t",
-                        assertion_results=[
-                            AssertionResult(status=AssertionStatus.FAILED, assertion_type="x", message="fail"),
-                        ],
-                    )],
+                    runs=[
+                        TestResult(
+                            test_name="t",
+                            assertion_results=[
+                                AssertionResult(
+                                    status=AssertionStatus.FAILED,
+                                    assertion_type="x",
+                                    message="fail",
+                                ),
+                            ],
+                        )
+                    ],
                 ),
             ],
         )

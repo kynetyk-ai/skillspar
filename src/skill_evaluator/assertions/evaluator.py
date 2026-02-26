@@ -81,26 +81,32 @@ def evaluate_assertions(
                     )
                     results.append(result)
                 except Exception as e:
-                    results.append(AssertionResult(
-                        status=AssertionStatus.ERROR,
-                        assertion_type=assertion.type,
-                        message=f"Error evaluating assertion: {e}",
-                    ))
+                    results.append(
+                        AssertionResult(
+                            status=AssertionStatus.ERROR,
+                            assertion_type=assertion.type,
+                            message=f"Error evaluating assertion: {e}",
+                        )
+                    )
             else:
-                results.append(AssertionResult(
-                    status=AssertionStatus.SKIPPED,
-                    assertion_type=assertion.type,
-                    message="LLM judge requires an API client",
-                ))
+                results.append(
+                    AssertionResult(
+                        status=AssertionStatus.SKIPPED,
+                        assertion_type=assertion.type,
+                        message="LLM judge requires an API client",
+                    )
+                )
             continue
 
         handler = _HANDLERS.get(type(assertion))
         if handler is None:
-            results.append(AssertionResult(
-                status=AssertionStatus.SKIPPED,
-                assertion_type=assertion.type,
-                message=f"Assertion type '{assertion.type}' not yet implemented",
-            ))
+            results.append(
+                AssertionResult(
+                    status=AssertionStatus.SKIPPED,
+                    assertion_type=assertion.type,
+                    message=f"Assertion type '{assertion.type}' not yet implemented",
+                )
+            )
             continue
         try:
             result = handler(assertion, trace)
@@ -108,9 +114,11 @@ def evaluate_assertions(
             results.append(result)
         except Exception as e:
             logger.debug("Assertion %s: ERROR (%s)", assertion.type, e)
-            results.append(AssertionResult(
-                status=AssertionStatus.ERROR,
-                assertion_type=assertion.type,
-                message=f"Error evaluating assertion: {e}",
-            ))
+            results.append(
+                AssertionResult(
+                    status=AssertionStatus.ERROR,
+                    assertion_type=assertion.type,
+                    message=f"Error evaluating assertion: {e}",
+                )
+            )
     return results
