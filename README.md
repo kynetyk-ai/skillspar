@@ -10,7 +10,7 @@ The underlying pattern — injecting instructional text into model context to sp
 
 ## How It Works
 
-Skillspar has two components designed to work together inside Claude Code:
+Skillspar has two components designed to work together along with Claude Code:
 
 1. **The plugin** (`/skillspar:evaluate`) — Claude reads your SKILL.md, analyzes its behaviors, and collaborates with you to generate a structured test suite (`.eval.yaml`).  This includes customizeable injection of the SKILL.md content in relation to simulated conversation context and simulated progressive discovery of reference material that informs such behaviors (modeled as tool call and tool result messages).
 2. **The CLI** (`skillspar run`) — Claude executes the generated suite against the Anthropic API and reports quantitative results — pass rates, baseline comparisons, and cost.
