@@ -1,5 +1,23 @@
 # CLI Reference
 
+## Configuration Defaults
+
+All defaults can be overridden in the `defaults` block of your `.eval.yaml` or per-test:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `model` | `claude-sonnet-4-5-20250929` | Model for test runs |
+| `judge_model` | `""` (same as `model`) | Model for `llm_judge` assertions |
+| `system_prompt` | `""` | System prompt providing a constant persona for both skill and baseline runs |
+| `max_tokens` | `4096` | Max tokens per API response |
+| `temperature` | `0` | Sampling temperature |
+| `runs` | `1` | Times to repeat each test |
+| `pass_threshold` | `1.0` | Fraction of runs that must pass |
+| `concurrency` | `1` | Max parallel API calls |
+| `max_retries` | `2` | API retry attempts on transient failure |
+| `max_turns` | `10` | Turn limit for multi-turn tests |
+| `enable_caching` | `true` | Enable prompt caching for shared prefixes and system prompts |
+
 ## Running Suites
 
 ```
