@@ -118,11 +118,14 @@ For full CLI options, YAML schema, and assertion types, see the [CLI Reference](
 
 ## Frequently Asked Questions
 
+**Does Skillspar prove my Skill works?**
+No — in the same way that unit tests don't prove your code works. Skillspar tells you whether a skill's instructions steer model behavior effectively, and whether the skill is even needed. Functional testing is still important, just like integration tests are needed for code — but a stable Skillspar suite dramatically narrows what you need to test manually, because steer failures and baseline overlap are already caught before you start.
+
 **My test passes without the skill too.**
 The behavior you're testing isn't skill-specific — the base model does it on its own. Either the skill's steer on this behavior is weak, or the assertion isn't targeting what makes the skill unique. Look at the baseline pass rate to confirm, then either strengthen the skill or test a more distinctive behavior.
 
 **The judge fails but the output looks correct.**
-The judge criteria probably reference context the judge can't see. Check that your criteria describe the expected behavior completely without relying on the skill definition, conversation prefix, or test input. "Follows the skill's format" fails; "contains exactly three greetings, one per line, in English/Spanish/Japanese order" succeeds.
+The judge criteria may reference context the judge can't see. Check that your criteria describe the expected behavior completely without relying on the skill definition, conversation prefix, or test input. "Follows the skill's format" fails; "contains exactly three greetings, one per line, in English/Spanish/Japanese order" succeeds.
 
 **My multi-turn test uses more turns than expected.**
 A tool call followed by a confirmation message counts as two turns, not one. If you expect a read-then-write workflow, that's at minimum two tool calls = four turns. Use `turn_count min/max` ranges to accommodate this.
