@@ -3,12 +3,14 @@ name: evaluate
 description: Analyze a SKILL.md and generate a .eval.yaml test suite with baseline comparison measuring the skill's marginal behavioral impact
 ---
 
-# Skill Evaluation
+# Evaluate Agent Skills
 
-This skill produces `.eval.yaml` test suites for the Skillspar framework. Given a target SKILL.md, the task is to extract testable behavioral claims and generate tests that measure the skill's **steer** — its marginal behavioral impact over the base model.
+Develop `.eval.yaml` test suites and run them using the Skillspar CLI harness. Given a target SKILL.md, the task is to extract testable behavioral claims and generate tests that measure the skill's **steer** — its marginal behavioral impact over the base model.
 
 ## A: Develop the Test Suite
-> **IMPORTANT**: Follow this protocol carefully. **ALWAYS** enter plan mode and get user approval before writing the test suite. **NEVER** finalize or run a .eval.yaml without user sign-off on the plan.
+> **IMPORTANT**: Follow this protocol carefully. 
+> **ALWAYS** enter plan mode and get user approval before writing the test suite. 
+> **NEVER** finalize or run a .eval.yaml without user sign-off on the plan.
 
 1. **Read the target SKILL.md** using the Read tool. Parse its frontmatter (`name`, `description`) and body.
    - If the SKILL.md has obvious gaps (missing sections, vague descriptions), flag these to the user and ask for clarification before proceeding.
