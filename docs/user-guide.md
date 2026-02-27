@@ -96,8 +96,6 @@ For full CLI options, YAML schema, and assertion types, see the [CLI Reference](
 
 **Use ranges for `turn_count` and `tool_called_times`.** A single tool call typically costs two turns (call + confirmation). Use `min`/`max` instead of `exactly` unless you have a strong reason for exactness.
 
-**Use clear inputs for conversation prefix tests.** An ambiguous input like "Hi there!" after a coding conversation may be interpreted as continuing the coding chat. Use inputs that clearly signal the skill's domain.
-
 **Make prefix content completely unrelated to the skill.** The point of a conversation prefix is to test context dilution — whether the skill holds up when prior conversation pushes it out of the model's attention. If the prefix is topically related to the skill, it injects helpful context that steers the model in the right direction anyway, and you're no longer measuring the skill's contribution. Use something with zero topical overlap — a passage from an open-source novel, a discussion about an unrelated domain, anything that couldn't accidentally help.
 
 **Run reliability tests after stabilization.** Once the suite passes consistently at `temperature: 0`, switch to `temperature: 0.7` with `runs: 5` and `pass_threshold: 0.8` to measure consistency under realistic conditions.
