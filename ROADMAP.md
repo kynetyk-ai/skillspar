@@ -221,13 +221,37 @@ and contribution workflow. Install via GitHub repo (`pip install git+...`).
 **Milestone**: CI is green, error messages are user-friendly, and the team has a clean
 contribution workflow via GitHub. ✅
 
-## Phase 5B: Open Source Launch (Future)
+## Phase 5B: Dogfooding — Skill Eval in CI
+
+Test the `/skillspar:evaluate` skill with Skillspar's own framework, wired into GitHub Actions.
+Demonstrates the CI/CD integration story with a real skill and catches regressions when the
+skill package changes.
+
+### Eval suite
+- [ ] Develop eval suite for `/skillspar:evaluate` using the skill itself (interactive)
+- [ ] Validate suite stability (2–3 iterations, reliable skill vs baseline separation)
+
+### CI workflow
+- [ ] GitHub Actions workflow (`.github/workflows/skill-eval.yml`): runs eval suite on
+      `skills/evaluate/**` path changes, with `workflow_dispatch` for manual triggers
+- [ ] `ANTHROPIC_API_KEY` repository secret
+- [ ] Artifact upload for eval results (JSON report + saved responses)
+
+### Documentation
+- [ ] CI/CD integration section in `docs/user-guide.md` referencing this repo's workflow
+      as a real-world example
+
+**Milestone**: Changes to the `/skillspar:evaluate` skill package trigger an automated eval
+run in CI, and the workflow serves as a reference implementation for users.
+
+## Phase 5C: Open Source Launch (Future)
 
 PyPI distribution, community files, and public release readiness.
 
 ### Distribution
 - [ ] PyPI packaging and distribution (`hatch build` + `twine upload` or trusted publisher)
 - [ ] GitHub release automation: tag-triggered workflow to build and publish to PyPI
+- [ ] Create clean public repo with squashed history for a fresh start at launch (no dev back-and-forth in git log)
 
 ### Packaging metadata (`pyproject.toml`)
 - [ ] Add `[project.classifiers]` (Development Status, License, Python versions, Topic)
