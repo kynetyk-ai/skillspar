@@ -5,6 +5,7 @@
 - [Installation and Setup](#installation-and-setup)
 - [Evaluating Skills](#evaluating-skills)
 - [Best Practices](#best-practices)
+- [Interpreting Results](#interpreting-results)
 - [Design Decisions](#design-decisions)
 - [Frequently Asked Questions](#frequently-asked-questions)
 
@@ -92,7 +93,7 @@ For full CLI options, YAML schema, and assertion types, see the [CLI Reference](
 
 **Make `llm_judge` criteria self-contained.** The judge model sees only the model's output and your criteria text. It does not see the skill definition, conversation prefix, or test context. Criteria like "follows the skill's format" will fail — describe the format explicitly.
 
-**Use `baseline: true` by default.** Baseline comparison is the core value proposition: it tells you whether the skill actually changes behavior. If baseline and skill pass rates are similar, the test isn't targeting skill-specific behavior.
+**Use `baseline: true` by default.** Baseline comparison tells you whether the skill actually changes behavior. If baseline and skill pass rates are similar, the test isn't targeting skill-specific behavior.
 
 **Use ranges for `turn_count` and `tool_called_times`.** A single tool call typically costs two turns (call + confirmation). Use `min`/`max` instead of `exactly` unless you have a strong reason for exactness.
 
@@ -100,7 +101,17 @@ For full CLI options, YAML schema, and assertion types, see the [CLI Reference](
 
 **Run reliability tests after stabilization.** Once the suite passes consistently at `temperature: 0`, switch to `temperature: 0.7` with `runs: 5` and `pass_threshold: 0.8` to measure consistency under realistic conditions.
 
+## Interpreting Results
+
+**A single run is a coin flip, not a measurement.** LLM output is nondeterministic — the same test can pass or fail on consecutive runs with identical inputs. A single pass doesn't mean the skill works reliably, and a single fail doesn't mean it's broken. Use `runs: 3` or higher with `temperature: 0.7` before drawing conclusions about reliability.
+
+**Not every test needs 100%.** A `pass_threshold` of 0.8 with `runs: 5` means 4 out of 5 runs must pass. For skills used interactively — where a human can nudge the model if it drifts — 80% may be the right bar. For skills in automated pipelines with no human oversight, you want higher thresholds. Set `pass_threshold` based on how the skill will actually be used.
+
+**Stabilize at temperature 0, then measure at temperature 0.7.** Use `temperature: 0` during iteration to minimize noise while you fix test artifacts. Once the suite is stable, switch to `temperature: 0.7` with multiple runs to measure real-world reliability — that's the condition the skill will face in production.
+
 ## Design Decisions
+
+**Why multiple runs matter.** LLM output is nondeterministic. A test that passes once at `temperature: 0` may fail at `temperature: 0.7`, and a test that fails once may pass on the next run. Skillspar supports `runs` and `pass_threshold` so you can measure consistency rather than relying on a single observation. Design your suite with this in mind: use `temperature: 0` for deterministic iteration, then `temperature: 0.7` with multiple runs to measure what users will actually experience.
 
 **Why baseline comparison.** A skill test that passes doesn't tell you much if the model would pass it anyway. Baseline comparison (`baseline: true`) runs each test with and without the skill injected. The difference is the skill's marginal steer — the behavior the skill actually causes. This is the metric that matters when you're editing a skill and want to know if your change improved things.
 
