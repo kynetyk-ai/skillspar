@@ -19,8 +19,9 @@ venv/
 htmlcov/
 .coverage
 
-# Results
+# Results (transient run artifacts, not snapshots)
 results/
+tests/evals/results.json
 
 # Claude
 .claude/
