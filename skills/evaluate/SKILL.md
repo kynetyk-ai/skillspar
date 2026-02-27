@@ -38,7 +38,7 @@ Analyze Agent Skill packages, decompose behavioral claims, build declarative tes
 1. Ensure `ANTHROPIC_API_KEY` is set in the environment or `.env`. See `references/cli-reference.md` for CLI options.
 2. **Run the suite** with JSON output:
    ```bash
-   skillspar run <path-to-eval.yaml> --output results.json --save-responses
+   skillspar run <path-to-eval.yaml> --output results.json
    ```
 
 ## C: Analyze the Results
@@ -57,7 +57,8 @@ Analyze Agent Skill packages, decompose behavioral claims, build declarative tes
    - **Baseline passes at similar rates to skill** — the skill may not be adding value (weak steer). Consider whether the test targets genuinely skill-specific behavior.
    - **Inconsistent pass rates (flaky)** — increase `runs` to measure variance. Revise the skill to strengthen steer.
 
-4. **Summarize findings** for the user with actionable recommendations: which tests to tighten, which claims need stronger skill language, and whether the skill demonstrates meaningful steer.
+4. **Summarize findings** for the user with actionable recommendations: which tests to tighten, which claims need stronger skill language, and whether the skill demonstrates meaningful steer. 
+**DO NOT** edit the eval suite until the user approves changes based on the findings.
 
 # Test Design Guide
 
