@@ -264,7 +264,11 @@ TestConfig = Annotated[
 
 class SuiteDefaults(BaseModel):
     system_prompt: str = ""  # Baseline agent persona, constant across skill/baseline runs
+    provider: Literal["anthropic", "openai"] = "anthropic"
+    base_url: str | None = None
+    api_key_env: str | None = None
     model: str = "claude-sonnet-4-5-20250929"
+    judge_provider: Literal["anthropic", "openai"] | None = None  # None -> provider
     judge_model: str = ""
     max_tokens: int = 4096
     temperature: float = 0
@@ -273,6 +277,19 @@ class SuiteDefaults(BaseModel):
     max_retries: int = 2
     concurrency: int = 1
     enable_caching: bool = True
+
+    @model_validator(mode="after")
+    def validate_cross_provider_judge(self) -> SuiteDefaults:
+        if (
+            self.judge_provider is not None
+            and self.judge_provider != self.provider
+            and not self.judge_model
+        ):
+            raise ValueError(
+                "judge_model is required when judge_provider differs from provider "
+                "(the test model belongs to a different provider than the judge)"
+            )
+        return self
 
     @field_validator("runs")
     @classmethod

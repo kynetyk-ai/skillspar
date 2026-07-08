@@ -8,10 +8,9 @@ from typing import TYPE_CHECKING
 from skill_evaluator.assertions.base import AssertionResult, AssertionStatus
 
 if TYPE_CHECKING:
-    from anthropic import Anthropic
-
     from skill_evaluator.config.schema import LLMJudgeAssertion
     from skill_evaluator.engine.trace import Trace
+    from skill_evaluator.providers.base import Provider
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ def check_llm_judge(
     assertion: LLMJudgeAssertion,
     trace: Trace,
     *,
-    client: Anthropic,
+    provider: Provider,
     judge_model: str | None = None,
 ) -> AssertionResult:
     """Evaluate a trace against criteria using a second LLM call."""
@@ -94,12 +93,13 @@ def check_llm_judge(
     )
 
     try:
-        response = client.messages.create(
+        turn = provider.create_message(
             model=model,
-            max_tokens=512,
-            temperature=0,
             system=_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_prompt}],
+            tools=None,
+            max_tokens=512,
+            temperature=0,
         )
     except Exception as e:
         logger.error("LLM judge API error: %s", e)
@@ -109,10 +109,7 @@ def check_llm_judge(
             message=f"LLM judge API error: {e}",
         )
 
-    response_text = ""
-    for block in response.content:
-        if block.type == "text":
-            response_text += block.text
+    response_text = turn.text_output
 
     try:
         passed, reasoning = _parse_verdict(response_text)

@@ -267,38 +267,38 @@ message builder, and the response parser. This also sets up Phase 6's A/B model 
 as a *cross-vendor* story — "does the steer hold on other models?"
 
 ### Provider abstraction
-- [ ] `providers/base.py`: protocol with
+- [x] `providers/base.py`: protocol with
       `create_message(model, system, messages, tools, max_tokens, temperature)` returning a
       normalized response (text, tool calls, normalized stop reason
       `end_turn | tool_use | max_tokens`, usage)
-- [ ] `providers/anthropic.py`: current behavior, passes `cache_control` through
-- [ ] `providers/openai_compat.py`: translate canonical (Anthropic-format) messages both
+- [x] `providers/anthropic.py`: current behavior, passes `cache_control` through
+- [x] `providers/openai_compat.py`: translate canonical (Anthropic-format) messages both
       directions — system param → system message, `tool_use`/`tool_result` blocks →
       `tool_calls` + `role: "tool"` messages, `input_schema` → `function.parameters`;
       map `finish_reason` and usage fields; strip `cache_control` markers; parse tool-call
       argument JSON strings
-- [ ] `openai` SDK as optional extra (`pip install skillspar[openai]`) with configurable
+- [x] `openai` SDK as optional extra (`pip install skillspar[openai]`) with configurable
       `base_url` — one adapter covers all OpenAI-compatible endpoints
 
 ### Config & CLI
-- [ ] `provider`, `base_url`, `api_key_env` fields on `SuiteDefaults`/`ResolvedConfig`
-- [ ] `judge_provider` so the judge can stay on Claude while the model-under-test runs
+- [x] `provider`, `base_url`, `api_key_env` fields on `SuiteDefaults`/`ResolvedConfig`
+- [x] `judge_provider` so the judge can stay on Claude while the model-under-test runs
       elsewhere (cross-provider comparison needs a fixed judge)
-- [ ] Provider-aware API key pre-flight check in the CLI
-- [ ] Normalize `stop_reason` assertion values (accept canonical values, keep Anthropic
+- [x] Provider-aware API key pre-flight check in the CLI
+- [x] Normalize `stop_reason` assertion values (accept canonical values, keep Anthropic
       strings as aliases for backward compatibility)
 
 ### Reporting & degradation
-- [ ] Extend pricing table schema with per-provider cache semantics (OpenAI: 0.5× cached
+- [x] Extend pricing table schema with per-provider cache semantics (OpenAI: 0.5× cached
       reads, free writes); unknown models degrade to "cost unavailable" rather than erroring
-- [ ] Cache reporting and prefix token-threshold warning become Anthropic-conditional
+- [x] Cache reporting and prefix token-threshold warning become Anthropic-conditional
 
 ### Documentation (per CLAUDE.md sync rules)
-- [ ] Update `skills/evaluate/references/eval-schema-reference.md` and SKILL.md for new
+- [x] Update `skills/evaluate/references/eval-schema-reference.md` and SKILL.md for new
       provider fields
-- [ ] `docs/cli-reference.md` and `docs/user-guide.md` provider sections
-- [ ] README: update "Anthropic models" scoping language
-- [ ] Adapter unit tests (suite is fully mocked — no API budget needed)
+- [x] `docs/cli-reference.md` and `docs/user-guide.md` provider sections
+- [x] README: update "Anthropic models" scoping language
+- [x] Adapter unit tests (suite is fully mocked — no API budget needed)
 
 **Milestone**: `skillspar run suite.yaml` executes against an OpenAI-compatible endpoint
 with tool-use tests and baseline comparison working, judge pinned to a fixed model.

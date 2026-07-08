@@ -79,7 +79,11 @@ VALID_SUITE_FIELDS = {
 }
 VALID_DEFAULTS_FIELDS = {
     "system_prompt",
+    "provider",
+    "base_url",
+    "api_key_env",
     "model",
+    "judge_provider",
     "judge_model",
     "max_tokens",
     "temperature",
@@ -89,6 +93,7 @@ VALID_DEFAULTS_FIELDS = {
     "concurrency",
     "enable_caching",
 }
+VALID_PROVIDERS = {"anthropic", "openai"}
 VALID_SINGLE_TURN_FIELDS = {
     "type",
     "name",
@@ -227,6 +232,24 @@ def _validate_defaults(defaults: dict) -> list[str]:
             if suggestion:
                 msg += f'\n  Did you mean "{suggestion}"?'
             errors.append(msg)
+
+    for field in ("provider", "judge_provider"):
+        value = defaults.get(field)
+        if value is not None and value not in VALID_PROVIDERS:
+            valid = ", ".join(sorted(VALID_PROVIDERS))
+            errors.append(
+                f"defaults.{field} — invalid value\n  Expected one of: {valid}, got {value!r}"
+            )
+
+    if (
+        defaults.get("judge_provider") is not None
+        and defaults.get("judge_provider") != defaults.get("provider", "anthropic")
+        and not defaults.get("judge_model")
+    ):
+        errors.append(
+            "defaults.judge_model — required\n"
+            "  judge_model must be set when judge_provider differs from provider"
+        )
 
     runs = defaults.get("runs")
     if runs is not None:

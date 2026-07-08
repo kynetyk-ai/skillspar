@@ -61,16 +61,16 @@ def _setup_logging(log_level: str | None) -> None:
     # Silence noisy third-party loggers
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("anthropic").setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
 
 
-def _check_api_key() -> None:
-    """Fail fast if ANTHROPIC_API_KEY is not set."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        click.echo(
-            "Error: ANTHROPIC_API_KEY environment variable is not set. "
-            "Set it or add it to a .env file.",
-            err=True,
-        )
+def _check_api_key(provider: str = "anthropic", api_key_env: str | None = None) -> None:
+    """Fail fast if the provider's API key env var is not set."""
+    from skill_evaluator.providers import missing_api_key_error
+
+    message = missing_api_key_error(provider, api_key_env)
+    if message:
+        click.echo(message, err=True)
         sys.exit(2)
 
 
@@ -111,6 +111,18 @@ def main():
     help="Override the suite default model.",
 )
 @click.option(
+    "--provider",
+    type=click.Choice(["anthropic", "openai"]),
+    default=None,
+    help="Override the suite default provider.",
+)
+@click.option(
+    "--base-url",
+    type=str,
+    default=None,
+    help="Override the API base URL (OpenAI-compatible endpoints).",
+)
+@click.option(
     "--verbose",
     is_flag=True,
     default=False,
@@ -130,6 +142,8 @@ def run(
     output_format,
     filter_pattern,
     model,
+    provider,
+    base_url,
     verbose,
     log_level,
 ):
@@ -143,7 +157,6 @@ def run(
     from skill_evaluator.discovery import DiscoveryError, resolve_eval_paths
 
     load_dotenv()
-    _check_api_key()
     _setup_logging(log_level)
 
     # Resolve format
@@ -168,6 +181,8 @@ def run(
             output_format=output_format,
             filter_pattern=filter_pattern,
             model=model,
+            provider=provider,
+            base_url=base_url,
             verbose=verbose,
         )
     else:
@@ -179,6 +194,8 @@ def run(
             output_format=output_format,
             filter_pattern=filter_pattern,
             model=model,
+            provider=provider,
+            base_url=base_url,
             verbose=verbose,
         )
 
@@ -189,6 +206,8 @@ def _load_and_execute(
     cli_runs=None,
     cli_concurrency=None,
     cli_model=None,
+    cli_provider=None,
+    cli_base_url=None,
     cli_output=None,
     cli_output_format=None,
     cli_verbose=False,
@@ -212,11 +231,17 @@ def _load_and_execute(
         cli_runs=cli_runs,
         cli_concurrency=cli_concurrency,
         cli_model=cli_model,
+        cli_provider=cli_provider,
+        cli_base_url=cli_base_url,
         cli_output=cli_output,
         cli_output_format=cli_output_format,
         cli_verbose=cli_verbose,
         cli_filter_pattern=cli_filter_pattern,
     )
+
+    _check_api_key(config.provider, config.api_key_env)
+    if config.judge_provider and config.judge_provider != config.provider:
+        _check_api_key(config.judge_provider)
 
     if cli_filter_pattern is not None:
         pattern_lower = cli_filter_pattern.lower()
@@ -232,7 +257,9 @@ def _load_and_execute(
         sys.exit(2)
 
     cost_summary = build_cost_summary(suite_result, config.model)
-    cache_summary = build_cache_summary(suite_result, config.model)
+    cache_summary = (
+        build_cache_summary(suite_result, config.model) if config.provider == "anthropic" else None
+    )
 
     json_reporter = JsonReporter()
     json_report = json_reporter.build_report(suite, suite_result, model=config.model)
@@ -253,6 +280,8 @@ def _run_single_suite(
     output_format,
     filter_pattern,
     model,
+    provider,
+    base_url,
     verbose,
 ) -> None:
     """Run a single eval suite — preserves original single-file behavior."""
@@ -261,6 +290,8 @@ def _run_single_suite(
         cli_runs=runs,
         cli_concurrency=concurrency,
         cli_model=model,
+        cli_provider=provider,
+        cli_base_url=base_url,
         cli_output=output,
         cli_output_format=output_format,
         cli_verbose=verbose,
@@ -300,6 +331,8 @@ def _run_multi_suite(
     output_format,
     filter_pattern,
     model,
+    provider,
+    base_url,
     verbose,
 ) -> None:
     """Run multiple eval suites with aggregated reporting."""
@@ -315,6 +348,8 @@ def _run_multi_suite(
         cli_runs=runs,
         cli_concurrency=concurrency,
         cli_model=model,
+        cli_provider=provider,
+        cli_base_url=base_url,
         cli_output=output,
         cli_output_format=output_format,
         cli_verbose=verbose,
@@ -383,6 +418,18 @@ def _run_multi_suite(
     help="Override the suite default model.",
 )
 @click.option(
+    "--provider",
+    type=click.Choice(["anthropic", "openai"]),
+    default=None,
+    help="Override the suite default provider.",
+)
+@click.option(
+    "--base-url",
+    type=str,
+    default=None,
+    help="Override the API base URL (OpenAI-compatible endpoints).",
+)
+@click.option(
     "--verbose",
     is_flag=True,
     default=False,
@@ -400,14 +447,24 @@ def _run_multi_suite(
     default=300,
     help="Debounce interval in milliseconds (default: 300).",
 )
-def watch(eval_file, runs, concurrency, filter_pattern, model, verbose, log_level, debounce):
+def watch(
+    eval_file,
+    runs,
+    concurrency,
+    filter_pattern,
+    model,
+    provider,
+    base_url,
+    verbose,
+    log_level,
+    debounce,
+):
     """Watch files and re-run an eval suite on changes."""
     from dotenv import load_dotenv
 
     from skill_evaluator.watch import watch_loop
 
     load_dotenv()
-    _check_api_key()
     _setup_logging(log_level)
 
     exit_code = watch_loop(
@@ -415,6 +472,8 @@ def watch(eval_file, runs, concurrency, filter_pattern, model, verbose, log_leve
         cli_runs=runs,
         cli_concurrency=concurrency,
         cli_model=model,
+        cli_provider=provider,
+        cli_base_url=base_url,
         cli_filter_pattern=filter_pattern,
         cli_verbose=verbose,
         debounce_ms=debounce,
@@ -427,7 +486,6 @@ def _run_suite_and_build_report(eval_file, model_override=None):
     from dotenv import load_dotenv
 
     load_dotenv()
-    _check_api_key()
 
     suite, _config, suite_result, cost_summary, cache_summary, report = _load_and_execute(
         eval_file,

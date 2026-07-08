@@ -6,12 +6,10 @@ import json
 import logging
 from typing import Any
 
-from anthropic import Anthropic, APIError
-
 from skill_evaluator.config.schema import InputConfig, ResolvedConfig, ToolResponseConfig
 from skill_evaluator.engine.conversation import build_messages
-from skill_evaluator.engine.single_turn import build_turn_from_response
-from skill_evaluator.engine.trace import Trace
+from skill_evaluator.engine.trace import Trace, Turn
+from skill_evaluator.providers.base import Provider, ProviderError
 from skill_evaluator.tools.matcher import match_tool_response
 
 logger = logging.getLogger(__name__)
@@ -29,6 +27,23 @@ def _serialize_tool_result(matched: dict[str, Any]) -> str:
     return json.dumps(matched)
 
 
+def _assistant_message_from_turn(turn: Turn) -> dict[str, Any]:
+    """Rebuild the assistant message (canonical format) from a normalized Turn."""
+    content: list[dict[str, Any]] = []
+    if turn.text_output:
+        content.append({"type": "text", "text": turn.text_output})
+    for tc in turn.tool_calls:
+        content.append(
+            {
+                "type": "tool_use",
+                "id": tc.id,
+                "name": tc.name,
+                "input": tc.input,
+            }
+        )
+    return {"role": "assistant", "content": content}
+
+
 class MultiTurnExecutionError(Exception):
     """Raised when a multi-turn execution fails."""
 
@@ -38,13 +53,13 @@ class MultiTurnExecutor:
 
     def __init__(
         self,
-        client: Anthropic,
+        provider: Provider,
         config: ResolvedConfig,
         tools: list[dict[str, Any]] | None = None,
         tool_responses: list[ToolResponseConfig] | None = None,
         max_turns: int = 10,
     ) -> None:
-        self.client = client
+        self.provider = provider
         self.config = config
         self.tools = tools
         self.tool_responses = tool_responses or []
@@ -64,24 +79,19 @@ class MultiTurnExecutor:
         )
 
         for turn_num in range(self.max_turns):
-            kwargs: dict[str, Any] = {
-                "model": self.config.model,
-                "max_tokens": self.config.max_tokens,
-                "system": system_prompt,
-                "messages": messages,
-            }
-            if self.config.temperature is not None:
-                kwargs["temperature"] = self.config.temperature
-            if self.tools:
-                kwargs["tools"] = self.tools
-
             try:
-                response = self.client.messages.create(**kwargs)
-            except APIError as e:
+                turn = self.provider.create_message(
+                    model=self.config.model,
+                    system=system_prompt,
+                    messages=messages,
+                    tools=self.tools or None,
+                    max_tokens=self.config.max_tokens,
+                    temperature=self.config.temperature,
+                )
+            except ProviderError as e:
                 logger.error("API call failed on turn %d: %s", turn_num, e)
-                raise MultiTurnExecutionError(f"API call failed: {e}") from e
+                raise MultiTurnExecutionError(str(e)) from e
 
-            turn = build_turn_from_response(response)
             trace.add_turn(turn)
 
             logger.debug(
@@ -95,21 +105,7 @@ class MultiTurnExecutor:
             if turn.stop_reason != "tool_use":
                 break
 
-            # Build assistant message from raw response content
-            assistant_content: list[dict[str, Any]] = []
-            for block in response.content:
-                if block.type == "text":
-                    assistant_content.append({"type": "text", "text": block.text})
-                elif block.type == "tool_use":
-                    assistant_content.append(
-                        {
-                            "type": "tool_use",
-                            "id": block.id,
-                            "name": block.name,
-                            "input": block.input,
-                        }
-                    )
-            messages.append({"role": "assistant", "content": assistant_content})
+            messages.append(_assistant_message_from_turn(turn))
 
             # Match tool calls to scripted responses
             tool_result_blocks: list[dict[str, Any]] = []

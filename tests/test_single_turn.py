@@ -4,6 +4,7 @@ import pytest
 
 from skill_evaluator.config.schema import InputConfig, MessageConfig, ResolvedConfig
 from skill_evaluator.engine.single_turn import ExecutionError, SingleTurnExecutor
+from skill_evaluator.providers.anthropic import AnthropicProvider
 
 
 class TestSingleTurnExecutor:
@@ -11,7 +12,7 @@ class TestSingleTurnExecutor:
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message(
             text="Hello there!"
         )
-        executor = SingleTurnExecutor(mock_anthropic_client, ResolvedConfig())
+        executor = SingleTurnExecutor(AnthropicProvider(mock_anthropic_client), ResolvedConfig())
         input_config = InputConfig(messages=[MessageConfig(role="user", content="Hi")])
 
         trace = executor.execute("You are a helpful assistant.", input_config)
@@ -27,7 +28,7 @@ class TestSingleTurnExecutor:
             tool_uses=[{"id": "tc_001", "name": "Write", "input": {"file_path": "/x"}}],
             stop_reason="tool_use",
         )
-        executor = SingleTurnExecutor(mock_anthropic_client, ResolvedConfig())
+        executor = SingleTurnExecutor(AnthropicProvider(mock_anthropic_client), ResolvedConfig())
         input_config = InputConfig(messages=[MessageConfig(role="user", content="Create a file")])
 
         trace = executor.execute("System prompt", input_config)
@@ -38,7 +39,7 @@ class TestSingleTurnExecutor:
     def test_execute_passes_model_params(self, mock_anthropic_client, mock_anthropic_message):
         mock_anthropic_client.messages.create.return_value = mock_anthropic_message()
         config = ResolvedConfig(model="claude-haiku-4-5-20251001", max_tokens=1024, temperature=0.5)
-        executor = SingleTurnExecutor(mock_anthropic_client, config)
+        executor = SingleTurnExecutor(AnthropicProvider(mock_anthropic_client), config)
         input_config = InputConfig(messages=[MessageConfig(role="user", content="Hi")])
 
         executor.execute("prompt", input_config)
@@ -52,7 +53,7 @@ class TestSingleTurnExecutor:
         from anthropic import APIConnectionError
 
         mock_anthropic_client.messages.create.side_effect = APIConnectionError(request=None)
-        executor = SingleTurnExecutor(mock_anthropic_client, ResolvedConfig())
+        executor = SingleTurnExecutor(AnthropicProvider(mock_anthropic_client), ResolvedConfig())
         input_config = InputConfig(messages=[MessageConfig(role="user", content="Hi")])
 
         with pytest.raises(ExecutionError, match="API call failed"):

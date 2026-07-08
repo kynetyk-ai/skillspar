@@ -17,16 +17,22 @@ All fields are optional and have sensible defaults:
 ```yaml
 defaults:
   system_prompt: ""                    # Baseline agent persona (constant across skill/baseline runs)
+  provider: "anthropic"                # "anthropic" (default) or "openai" (any OpenAI-compatible endpoint)
+  base_url: null                       # Override API base URL (OpenAI-compatible endpoints only)
+  api_key_env: null                    # Custom env var name for the API key
   model: "claude-sonnet-4-5-20250929"
-  judge_model: ""                      # Model for llm_judge assertions
+  judge_provider: null                 # Provider for llm_judge assertions (defaults to provider)
+  judge_model: ""                      # Model for llm_judge assertions; REQUIRED if judge_provider differs from provider
   max_tokens: 4096
   temperature: 0
   runs: 1                              # Repeated runs per test (min: 1)
   pass_threshold: 1.0                  # Fraction of runs that must pass (0.0, 1.0]
   max_retries: 2                       # Retries on transient API errors
   concurrency: 1                       # Parallel test execution
-  enable_caching: true                 # Prompt caching for prefix/system prompt
+  enable_caching: true                 # Prompt caching for prefix/system prompt (Anthropic only)
 ```
+
+With `provider: openai`, the suite runs against any OpenAI-compatible Chat Completions endpoint (OpenAI, OpenRouter, LiteLLM, Ollama, vLLM) — set `base_url` for non-OpenAI endpoints and ensure `OPENAI_API_KEY` (or `api_key_env`) is set. Prompt caching and cache cost reporting are Anthropic-only. When comparing a skill across providers, pin the judge to one fixed model via `judge_provider` + `judge_model` so quality scoring stays consistent.
 
 The `system_prompt` is sent as the API system message on every run (both skill and baseline). Use it to establish a persona or behavioral constraints that the skill builds on top of, rather than for content that should only appear in skill runs.
 

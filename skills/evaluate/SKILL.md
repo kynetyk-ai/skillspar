@@ -35,7 +35,7 @@ Analyze Agent Skill packages, decompose behavioral claims, build declarative tes
 ## B: Run the Test Suite
 > **IMPORTANT**: Running a test suite consumes API credits. Get explicit user approval before running.
 
-1. Ensure `ANTHROPIC_API_KEY` is set in the environment or `.env`. See `references/cli-reference.md` for CLI options.
+1. Ensure `ANTHROPIC_API_KEY` is set in the environment or `.env` (or `OPENAI_API_KEY` when the suite sets `provider: openai`). See `references/cli-reference.md` for CLI options.
 2. **Run the suite** with JSON output:
    ```bash
    skillspar run <path-to-eval.yaml> --output results.json

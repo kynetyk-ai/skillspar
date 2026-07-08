@@ -6,6 +6,7 @@ from skill_evaluator.assertions.llm_judge import (
     check_llm_judge,
 )
 from skill_evaluator.config.schema import LLMJudgeAssertion
+from skill_evaluator.providers.anthropic import AnthropicProvider
 
 
 class TestParseVerdict:
@@ -51,7 +52,7 @@ class TestCheckLlmJudge:
         result = check_llm_judge(
             assertion,
             simple_text_trace,
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
 
@@ -68,7 +69,7 @@ class TestCheckLlmJudge:
         result = check_llm_judge(
             assertion,
             simple_text_trace,
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
 
@@ -86,7 +87,7 @@ class TestCheckLlmJudge:
         result = check_llm_judge(
             assertion,
             simple_text_trace,
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
 
@@ -100,7 +101,7 @@ class TestCheckLlmJudge:
         result = check_llm_judge(
             assertion,
             simple_text_trace,
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
 
@@ -118,7 +119,7 @@ class TestCheckLlmJudge:
         check_llm_judge(
             assertion,
             simple_text_trace,
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
 
@@ -134,7 +135,7 @@ class TestCheckLlmJudge:
         check_llm_judge(
             assertion,
             simple_text_trace,
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
 
@@ -146,7 +147,7 @@ class TestCheckLlmJudge:
         result = check_llm_judge(
             assertion,
             simple_text_trace,
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             judge_model=None,
         )
 

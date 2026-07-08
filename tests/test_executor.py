@@ -33,10 +33,13 @@ tests:
         suite = load_eval_suite(eval_file)
         config = resolve_config(suite.defaults)
 
-        # Monkeypatch the Anthropic client via runner
+        # Monkeypatch the Anthropic client via the provider adapter
         from unittest.mock import patch
 
-        with patch("skill_evaluator.runner.Anthropic", return_value=mock_anthropic_client):
+        with patch(
+            "skill_evaluator.providers.anthropic.Anthropic",
+            return_value=mock_anthropic_client,
+        ):
             result = execute_suite(eval_file, suite, config)
 
         assert result.suite_name == "executor test"

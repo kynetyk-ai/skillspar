@@ -25,8 +25,12 @@ All defaults can be overridden in the `defaults` block of your `.eval.yaml` or p
 
 | Field | Default | Description |
 |-------|---------|-------------|
+| `provider` | `anthropic` | API provider: `anthropic` or `openai` (any OpenAI-compatible endpoint) |
+| `base_url` | none | API base URL override, for OpenAI-compatible endpoints (OpenRouter, LiteLLM, Ollama, vLLM) |
+| `api_key_env` | none | Custom environment variable name for the API key |
 | `model` | `claude-sonnet-4-5-20250929` | Model for test runs |
-| `judge_model` | `""` (same as `model`) | Model for `llm_judge` assertions |
+| `judge_provider` | none (same as `provider`) | Provider for `llm_judge` assertions — pin the judge to a fixed provider when comparing a skill across providers |
+| `judge_model` | `""` (same as `model`) | Model for `llm_judge` assertions; **required** when `judge_provider` differs from `provider` |
 | `system_prompt` | `""` | System prompt providing a constant persona for both skill and baseline runs |
 | `max_tokens` | `4096` | Max tokens per API response |
 | `temperature` | `0` | Sampling temperature |
@@ -35,7 +39,27 @@ All defaults can be overridden in the `defaults` block of your `.eval.yaml` or p
 | `concurrency` | `1` | Max parallel API calls |
 | `max_retries` | `2` | API retry attempts on transient failure |
 | `max_turns` | `10` | Turn limit for multi-turn tests |
-| `enable_caching` | `true` | Enable prompt caching for shared prefixes and system prompts |
+| `enable_caching` | `true` | Enable prompt caching for shared prefixes and system prompts (Anthropic only) |
+
+### Providers
+
+The default provider is Anthropic. Setting `provider: openai` (or passing `--provider openai`) runs the suite against any endpoint speaking the OpenAI Chat Completions API — OpenAI itself, or OpenRouter / LiteLLM / Ollama / vLLM via `base_url`. Requires the optional dependency: `pip install "skillspar[openai]"`.
+
+```yaml
+defaults:
+  provider: openai
+  base_url: "http://localhost:11434/v1"   # e.g. Ollama
+  model: "llama3.1"
+  judge_provider: anthropic                # keep quality judging on a fixed model
+  judge_model: "claude-sonnet-4-5-20250929"
+```
+
+Provider notes:
+
+- **Stop reasons** are normalized — write `stop_reason` assertions with either vocabulary (`end_turn`/`stop`, `tool_use`/`tool_calls`, `max_tokens`/`length`).
+- **Prompt caching** (`enable_caching`, cache cost reporting) is Anthropic-only; OpenAI-compatible endpoints cache automatically and `cache_control` markers are stripped.
+- **Cost estimation** covers Claude models out of the box; add entries for other models via `SKILLSPAR_PRICING_FILE` (set `"cache_semantics": "openai"` on those entries). Unknown models report no cost rather than erroring.
+- The adapter sends `max_tokens` (not `max_completion_tokens`) for widest compatible-server support; the very newest OpenAI models may reject it.
 
 ## Environment Variables
 
@@ -43,9 +67,13 @@ Skillspar reads a `.env` file at the working directory (via `python-dotenv`) and
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | yes | API key for all model calls |
+| `ANTHROPIC_API_KEY` | yes* | API key for the `anthropic` provider (default) |
+| `OPENAI_API_KEY` | yes* | API key for the `openai` provider (*whichever provider a suite uses; override the var name with `api_key_env`) |
 | `SKILLSPAR_MODEL` | no | Default model when the suite `defaults` block doesn't set one |
 | `SKILLSPAR_JUDGE_MODEL` | no | Default model for `llm_judge` assertions (falls back to the test model) |
+| `SKILLSPAR_PROVIDER` | no | Default provider (`anthropic` or `openai`) when the suite doesn't set one |
+| `SKILLSPAR_BASE_URL` | no | Default API base URL for OpenAI-compatible endpoints |
+| `SKILLSPAR_JUDGE_PROVIDER` | no | Default judge provider when the suite doesn't set one |
 | `SKILLSPAR_OUTPUT` | no | Directory for auto-named JSON reports; the `--output` flag overrides with an exact path |
 | `SKILLSPAR_LOG_LEVEL` | no | Logging verbosity: `DEBUG`, `INFO`, `WARNING` (default), `ERROR` |
 | `SKILLSPAR_PRICING_FILE` | no | Path to a JSON file of model pricing entries, merged over the builtin table. Each entry: `{"<model-id>": {"input": <$/Mtok>, "output": <$/Mtok>, "cache_write_multiplier": 1.25, "cache_read_multiplier": 0.1}}` |
@@ -262,6 +290,8 @@ skillspar run [OPTIONS] EVAL_FILES...
   --format json|junit  Report format (default: inferred from extension, or json)
   --filter PATTERN     Only run tests whose name contains this substring
   --model MODEL        Override the suite default model
+  --provider NAME      Override the suite default provider (anthropic|openai)
+  --base-url URL       Override the API base URL (OpenAI-compatible endpoints)
   --verbose            Show per-assertion details
   --log-level LEVEL    Set logging verbosity (DEBUG/INFO/WARNING/ERROR)
 ```
@@ -309,7 +339,7 @@ skillspar watch suite.eval.yaml
 skillspar watch suite.eval.yaml --filter "greeting" --verbose --debounce 500
 ```
 
-Each iteration diffs against the previous run, highlighting regressions and improvements. Supports the same `--runs`, `--concurrency`, `--filter`, `--model`, `--verbose`, and `--log-level` flags as `run`, plus `--debounce` (ms, default: 300).
+Each iteration diffs against the previous run, highlighting regressions and improvements. Supports the same `--runs`, `--concurrency`, `--filter`, `--model`, `--provider`, `--base-url`, `--verbose`, and `--log-level` flags as `run`, plus `--debounce` (ms, default: 300).
 
 ## Snapshots
 
@@ -332,7 +362,7 @@ skillspar snapshot diff --latest my-skill.eval.yaml
 
 ## Architecture
 
-SKILL.md is injected as a user message — matching how Claude Code delivers skills to the agent. An optional `system_prompt` in suite defaults provides a constant persona for both skill and baseline runs. Mock tools use standard Anthropic tool definitions. The API response is inspected against your assertions.
+SKILL.md is injected as a user message — matching how Claude Code delivers skills to the agent. An optional `system_prompt` in suite defaults provides a constant persona for both skill and baseline runs. Mock tools are defined with Anthropic tool schemas (translated automatically for OpenAI-compatible providers). The API response is inspected against your assertions.
 
 ```
 YAML Config → Skill Parser → Test Executor → Assertion Engine → Reporter
