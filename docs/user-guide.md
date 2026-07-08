@@ -35,7 +35,7 @@ For development mode (from a local clone):
 
 ```bash
 claude --plugin-dir ./path/to/skillspar   # plugin
-pip install -e ".[dev]"                     # CLI + dev deps
+uv sync --extra dev                        # CLI + dev deps (or: pip install -e ".[dev]")
 ```
 
 ### API key
@@ -47,6 +47,8 @@ export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 The plugin includes a `SessionStart` hook that checks whether the CLI is installed and the API key is set when you open Claude Code.
+
+For the complete list of configuration environment variables (`SKILLSPAR_MODEL`, `SKILLSPAR_OUTPUT`, pricing overrides, and more), see [Environment Variables](cli-reference.md#environment-variables) in the CLI reference.
 
 ## Evaluating Skills
 

@@ -9,6 +9,16 @@ import pytest
 from skill_evaluator.engine.trace import TokenUsage, ToolCall, Trace, Turn
 
 
+@pytest.fixture(autouse=True)
+def _dummy_api_key(monkeypatch):
+    """Make tests independent of the developer's environment.
+
+    The CLI pre-flight check requires ANTHROPIC_API_KEY; all API calls are
+    mocked, so a dummy value keeps tests hermetic (locally and in CI).
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-dummy-key")
+
+
 @pytest.fixture
 def sample_usage():
     return TokenUsage(input_tokens=100, output_tokens=50)

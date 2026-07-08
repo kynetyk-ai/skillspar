@@ -427,6 +427,7 @@ def _run_suite_and_build_report(eval_file, model_override=None):
     from dotenv import load_dotenv
 
     load_dotenv()
+    _check_api_key()
 
     suite, _config, suite_result, cost_summary, cache_summary, report = _load_and_execute(
         eval_file,

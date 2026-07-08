@@ -227,25 +227,32 @@ Fix the gaps found in the pre-launch audit (July 2026): CI has never run and wou
 and the community files planned for launch don't exist yet.
 
 ### CI fixes
-- [ ] Make tests environment-independent: autouse fixture in `tests/conftest.py` that sets a
+- [x] Make tests environment-independent: autouse fixture in `tests/conftest.py` that sets a
       dummy `ANTHROPIC_API_KEY` (16 CLI tests currently fail without a real key in the env,
       and `.github/workflows/ci.yml` sets none)
-- [ ] Add `develop` to CI push triggers (workflow currently only fires on `main` pushes and
+- [x] Add `develop` to CI push triggers (workflow currently only fires on `main` pushes and
       PRs, so it has never executed)
 - [ ] Verify a green Actions run on GitHub
 
 ### Community files (pulled forward from the old Phase 5C)
-- [ ] `CHANGELOG.md` (0.1.0 entry)
-- [ ] `CONTRIBUTING.md` (dev setup, testing, PR workflow, code style expectations)
-- [ ] `CODE_OF_CONDUCT.md` (Contributor Covenant)
-- [ ] `SECURITY.md` (vulnerability reporting policy)
-- [ ] README contributing section (link to `CONTRIBUTING.md`, community guidelines summary)
+- [x] `CHANGELOG.md` (0.1.0 entry)
+- [x] `CONTRIBUTING.md` (dev setup, testing, PR workflow, code style expectations)
+- [x] `CODE_OF_CONDUCT.md` (Contributor Covenant)
+- [x] `SECURITY.md` (vulnerability reporting policy)
+- [x] README contributing section (link to `CONTRIBUTING.md`, community guidelines summary)
 
 ### Metadata & doc consistency
-- [ ] Add `[project.classifiers]` to `pyproject.toml` (Development Status, License, Python
+- [x] Add `[project.classifiers]` to `pyproject.toml` (Development Status, License, Python
       versions, Topic)
-- [ ] Fix stale CLAUDE.md roadmap line (says "Next: Phase 5A"; 5A is complete)
+- [x] Fix stale CLAUDE.md roadmap line (says "Next: Phase 5A"; 5A is complete)
 - [ ] Set GitHub repo description and topics
+
+### uv adoption (company standard for package management)
+- [x] Commit `uv.lock`; dev environment via `uv venv` + `uv sync --extra dev` (hatchling
+      build backend and `[project]` metadata unchanged — end-user installs unaffected)
+- [x] CI installs via `astral-sh/setup-uv` + `uv sync --extra dev`, runs tools via `uv run`
+- [x] CLAUDE.md dev-workflow section rewritten uv-first
+- [x] CONTRIBUTING.md documents uv-first setup with pip fallback for external contributors
 
 **Milestone**: CI is green on GitHub, community files exist, and metadata is
 launch-ready.

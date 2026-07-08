@@ -5,6 +5,7 @@ Full reference for `.eval.yaml` test suite configuration, CLI commands, and resu
 ## Contents
 
 - [Configuration Defaults](#configuration-defaults)
+- [Environment Variables](#environment-variables)
 - [Test Suite Format](#test-suite-format)
 - [Baseline Testing](#baseline-testing)
 - [Mid-Conversation Testing](#mid-conversation-testing)
@@ -35,6 +36,22 @@ All defaults can be overridden in the `defaults` block of your `.eval.yaml` or p
 | `max_retries` | `2` | API retry attempts on transient failure |
 | `max_turns` | `10` | Turn limit for multi-turn tests |
 | `enable_caching` | `true` | Enable prompt caching for shared prefixes and system prompts |
+
+## Environment Variables
+
+Skillspar reads a `.env` file at the working directory (via `python-dotenv`) and the process environment. Shell exports take precedence over `.env`. See `.env.example` for a ready-to-copy template.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ANTHROPIC_API_KEY` | yes | API key for all model calls |
+| `SKILLSPAR_MODEL` | no | Default model when the suite `defaults` block doesn't set one |
+| `SKILLSPAR_JUDGE_MODEL` | no | Default model for `llm_judge` assertions (falls back to the test model) |
+| `SKILLSPAR_OUTPUT` | no | Directory for auto-named JSON reports; the `--output` flag overrides with an exact path |
+| `SKILLSPAR_LOG_LEVEL` | no | Logging verbosity: `DEBUG`, `INFO`, `WARNING` (default), `ERROR` |
+| `SKILLSPAR_PRICING_FILE` | no | Path to a JSON file of model pricing entries, merged over the builtin table. Each entry: `{"<model-id>": {"input": <$/Mtok>, "output": <$/Mtok>, "cache_write_multiplier": 1.25, "cache_read_multiplier": 0.1}}` |
+| `SKILLSPAR_SNAPSHOT_DIR` | no | Snapshot storage directory (default `.skillspar/snapshots/`); the `--snapshot-dir` flag overrides |
+
+Precedence for values that appear in multiple places: CLI flags > `.eval.yaml` > environment variables > builtin defaults.
 
 ## Test Suite Format
 
