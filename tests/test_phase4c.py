@@ -272,7 +272,14 @@ class TestJsonCacheReporting:
 
 
 class TestJsonPerRunCost:
-    def test_cost_usd_injected(self):
+    def test_cost_usd_injected(self, tmp_path, monkeypatch):
+        import json as _json
+
+        pricing_file = tmp_path / "pricing.json"
+        pricing_file.write_text(
+            _json.dumps({"claude-sonnet-4-5-20250929": {"input": 3.0, "output": 15.0}})
+        )
+        monkeypatch.setenv("SKILLSPAR_PRICING_FILE", str(pricing_file))
         suite = _make_suite()
         trace = _make_trace(input_tokens=1000, output_tokens=500)
         result = SuiteResult(

@@ -140,11 +140,14 @@ The `trace` object contains the full conversation turns:
       "cache_read_input_tokens": 500,
       "estimated_savings_usd": 0.000500     // Optional (6 decimals)
     },
-    "cost": {                               // Present only if cost data available
+    "cost": {                               // Present only if cost estimation is enabled
       "total_cost_usd": 0.025000,           // Skill + baseline (6 decimals)
       "skill_cost_usd": 0.020000,           // Skill runs only
       "baseline_cost_usd": 0.005000         // Optional, present if baseline runs exist
     }
+    // Cost estimation is opt-in: dollar fields appear only when the user has set
+    // SKILLSPAR_PRICING_FILE with pricing for the models used. Token counts are
+    // always present regardless.
   }
 }
 ```

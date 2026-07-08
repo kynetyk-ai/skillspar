@@ -469,12 +469,16 @@ class TestOpenAICostSemantics:
         expected = (600 * 2.0 + 400 * 2.0 * 0.5 + 500 * 8.0) / 1_000_000
         assert cost == pytest.approx(expected)
 
-    def test_anthropic_semantics_unchanged(self):
+    def test_anthropic_semantics_default(self, monkeypatch, tmp_path):
         from skill_evaluator.engine.trace import TokenUsage
         from skill_evaluator.reporting.cost import estimate_cost
 
+        pricing_file = tmp_path / "pricing.json"
+        pricing_file.write_text(json.dumps({"claude-test": {"input": 3.0, "output": 15.0}}))
+        monkeypatch.setenv("SKILLSPAR_PRICING_FILE", str(pricing_file))
+
         usage = TokenUsage(input_tokens=1000, output_tokens=500)
-        cost = estimate_cost(usage, "claude-sonnet-4-5-20250929")
+        cost = estimate_cost(usage, "claude-test")
         assert cost == pytest.approx((1000 * 3.0 + 500 * 15.0) / 1_000_000)
 
 

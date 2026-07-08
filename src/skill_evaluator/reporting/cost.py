@@ -11,38 +11,22 @@ from skill_evaluator.engine.trace import TokenUsage
 
 logger = logging.getLogger(__name__)
 
-# Pricing per million tokens (USD).
-# Format: model_id -> {input, output, cache_write_multiplier, cache_read_multiplier,
-#                      cache_semantics ("anthropic" default, or "openai")}
+# Cost estimation is opt-in: skillspar ships no builtin pricing table, so cost
+# sections are simply omitted unless the user provides their own assumptions
+# via SKILLSPAR_PRICING_FILE (a JSON object; see .env.example).
+#
+# Pricing entry format, per million tokens (USD):
+#   model_id -> {input, output, cache_write_multiplier, cache_read_multiplier,
+#                cache_semantics ("anthropic" default, or "openai")}
 # anthropic semantics: input_tokens EXCLUDE cache tokens;
 #   cache_write cost = input * cache_write_multiplier, cache_read = input * cache_read_multiplier
 # openai semantics: input_tokens INCLUDE cached tokens; cache writes are free;
 #   cached reads are billed at input * cache_read_multiplier (typically 0.5)
-_BUILTIN_PRICING: dict[str, dict[str, Any]] = {
-    "claude-sonnet-4-5-20250929": {
-        "input": 3.00,
-        "output": 15.00,
-        "cache_write_multiplier": 1.25,
-        "cache_read_multiplier": 0.1,
-    },
-    "claude-haiku-4-5-20251001": {
-        "input": 0.80,
-        "output": 4.00,
-        "cache_write_multiplier": 1.25,
-        "cache_read_multiplier": 0.1,
-    },
-    "claude-opus-4-20250514": {
-        "input": 15.00,
-        "output": 75.00,
-        "cache_write_multiplier": 1.25,
-        "cache_read_multiplier": 0.1,
-    },
-}
 
 
 def _load_pricing() -> dict[str, dict[str, Any]]:
-    """Load pricing table, optionally extended/overridden by env var."""
-    pricing = dict(_BUILTIN_PRICING)
+    """Load the user's pricing table from SKILLSPAR_PRICING_FILE (empty if unset)."""
+    pricing: dict[str, dict[str, Any]] = {}
     pricing_file = os.environ.get("SKILLSPAR_PRICING_FILE")
     if pricing_file:
         try:
@@ -66,7 +50,11 @@ def estimate_cost(usage: TokenUsage, model: str) -> float | None:
     pricing = _load_pricing()
     model_pricing = pricing.get(model)
     if model_pricing is None:
-        logger.warning("No pricing data for model '%s'; cost will be null", model)
+        if pricing:
+            # User opted into cost estimation but this model has no entry — worth flagging.
+            logger.warning("No pricing entry for model '%s'; cost will be null", model)
+        else:
+            logger.debug("Cost estimation disabled (SKILLSPAR_PRICING_FILE not set)")
         return None
 
     per_m_input = model_pricing["input"]
