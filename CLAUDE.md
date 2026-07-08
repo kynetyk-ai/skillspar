@@ -1,15 +1,18 @@
 # Skillspar — Development Guide
 
-## Virtual Environment
+## Package Management (uv)
 
-This project uses a Python virtual environment at `.venv/`. Always use it for running commands:
+This project uses [uv](https://docs.astral.sh/uv/) with a committed `uv.lock`. The venv lives at `.venv/` (uv-managed). Always run commands through uv:
 
 ```bash
-.venv/bin/pip install -e ".[dev]"   # install/update deps
-.venv/bin/skillspar ...             # run the CLI (or skill-eval)
-.venv/bin/pytest                    # run tests
-.venv/bin/ruff check src/           # lint
+uv sync --extra dev        # create/update .venv from uv.lock
+uv run skillspar ...       # run the CLI (or skill-eval)
+uv run pytest              # run tests
+uv run ruff check src/     # lint
+uv run pyright src/        # type check
 ```
+
+The build backend stays hatchling with standard PEP 621 `[project]` metadata — uv manages the dev environment only; end users can still `pip install` the package. After changing dependencies in `pyproject.toml`, run `uv lock` and commit the updated `uv.lock`.
 
 ## Project Structure
 
@@ -30,7 +33,7 @@ This project uses a Python virtual environment at `.venv/`. Always use it for ru
 
 ### Code quality basics
 - Robust error handling at every boundary: user input, file I/O, API calls, config parsing. Surface clear error messages, not raw tracebacks.
-- Use the project's structured logging (`skill_evaluator.logging`) — not print statements. Log at appropriate levels: DEBUG for internal flow, INFO for user-visible events, WARNING for recoverable issues, ERROR for failures.
+- Use module-level loggers (`logging.getLogger(__name__)`) — not print statements. Log at appropriate levels: DEBUG for internal flow, INFO for user-visible events, WARNING for recoverable issues, ERROR for failures.
 - Write tests alongside new code. Run `pytest` before considering a task complete.
 - Validate early: Pydantic validators on config schemas, not runtime checks deep in the engine.
 

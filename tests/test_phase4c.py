@@ -496,3 +496,15 @@ class TestExitCodes:
         runner = CliRunner()
         result = runner.invoke(main, ["run", str(eval_file)])
         assert result.exit_code == 0
+
+    def test_snapshot_save_missing_api_key_exits_2(self, monkeypatch, tmp_path):
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+        eval_file = tmp_path / "test.eval.yaml"
+        eval_file.write_text("placeholder")
+
+        runner = CliRunner()
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            result = runner.invoke(main, ["snapshot", "save", str(eval_file)])
+        assert result.exit_code == 2
+        assert "ANTHROPIC_API_KEY" in result.output

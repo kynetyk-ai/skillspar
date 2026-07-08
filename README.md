@@ -106,16 +106,22 @@ For the full YAML schema, all CLI options, assertion types, mock tool builtins, 
 
 ## Development
 
+Skillspar uses [uv](https://docs.astral.sh/uv/) for development (plain pip works too — see [CONTRIBUTING.md](CONTRIBUTING.md)):
+
 ```bash
 git clone https://github.com/kynetyk-ai/skillspar.git
 cd skillspar
-pip install -e ".[dev]"
-pytest
+uv sync --extra dev
+uv run pytest
 ```
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for dev setup, checks, and the PR workflow. This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md); please report security issues privately per [SECURITY.md](SECURITY.md).
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md) for the phased implementation plan.
+See [ROADMAP.md](ROADMAP.md) for the phased implementation plan, and [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## Acknowledgements
 
