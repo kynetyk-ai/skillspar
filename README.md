@@ -4,7 +4,7 @@ Define test scenarios in YAML, run them against the API, and measure how well yo
 
 ## Why Test Skills?
 
-Agent skills are prompt documents and reference materials that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar currently evaluates steer on tool-using Anthropic models using API calls. 
+Agent skills are prompt documents and reference materials that specialize general-purpose agents — no fine-tuning, no custom code. But measuring how well a skill performs is largely manual: invoke it, eyeball the output, track results by hand. There's no automated way to check whether an edit improved things, whether the skill holds up after context dilution, or whether a model update changed behavior. Skillspar fills the gap with a declarative test harness — define expected behaviors in YAML, run them against the API, and get quantitative results you can track over time. Skillspar evaluates steer on tool-using Anthropic models by default, and on any OpenAI-compatible endpoint (OpenAI, OpenRouter, LiteLLM, Ollama, vLLM) via the optional `openai` provider — so you can also measure whether a skill's steer holds across models.
 
 The underlying pattern — injecting instructional text into model context to specialize behavior — is shared across major coding agents including [Claude Code](https://code.claude.com/docs/en/skills), [Cursor](https://docs.cursor.com/context/rules-for-ai), and [Windsurf](https://docs.windsurf.com/windsurf/cascade/memories), and is converging into an [open standard](https://agentskills.io/home).
 
@@ -13,7 +13,7 @@ The underlying pattern — injecting instructional text into model context to sp
 Skillspar has two components designed to work together along with Claude Code:
 
 1. **The plugin** (`/skillspar:evaluate`) — Claude reads your SKILL.md, analyzes its behaviors, and collaborates with you to generate a structured test suite (`.eval.yaml`).  This includes customizeable injection of the SKILL.md content in relation to simulated conversation context and simulated progressive discovery of reference material that informs such behaviors (modeled as tool call and tool result messages).
-2. **The CLI** (`skillspar run`) — Claude executes the generated suite against the Anthropic API and reports quantitative results — pass rates, baseline comparisons, and cost.
+2. **The CLI** (`skillspar run`) — Claude executes the generated suite against the model API and reports quantitative results — pass rates, baseline comparisons, and cost.
 
 The typical workflow:
 
@@ -31,6 +31,9 @@ The typical workflow:
 
 # 2. Install the CLI (runs generated test suites)
 pip install git+https://github.com/kynetyk-ai/skillspar.git
+
+# Optional: OpenAI-compatible provider support (OpenAI, OpenRouter, LiteLLM, Ollama, vLLM)
+pip install "skillspar[openai] @ git+https://github.com/kynetyk-ai/skillspar.git"
 ```
 
 For development mode (from a clone of this repo):
@@ -102,6 +105,8 @@ skillspar run examples/ --verbose
 
 - **LLM judge** — use a separate model call to evaluate subjective quality via `llm_judge` assertions, with configurable `criteria` and optional `judge_model`. See [Assertion Types](docs/cli-reference.md#assertion-types).
 
+- **Multi-provider** — run suites against Anthropic (default) or any OpenAI-compatible endpoint with `provider: openai` and `base_url`, keeping the judge pinned to a fixed model for fair cross-model comparison. See [Providers](docs/cli-reference.md#providers).
+
 For the full YAML schema, all CLI options, assertion types, mock tool builtins, and configuration defaults, see the [CLI Reference](docs/cli-reference.md). For setup instructions, best practices, and design rationale, see the [User Guide](docs/user-guide.md).
 
 ## Development
@@ -131,6 +136,7 @@ Skillspar is built on these open source libraries:
 |---------|---------|
 | [anthropic](https://github.com/anthropics/anthropic-sdk-python) | MIT |
 | [click](https://github.com/pallets/click) | BSD-3-Clause |
+| [openai](https://github.com/openai/openai-python) (optional) | Apache-2.0 |
 | [jsonpath-ng](https://github.com/h2non/jsonpath-ng) | Apache-2.0 |
 | [pydantic](https://github.com/pydantic/pydantic) | MIT |
 | [PyYAML](https://pyyaml.org/) | MIT |

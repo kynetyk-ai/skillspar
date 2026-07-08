@@ -10,6 +10,7 @@ Skillspar produces JSON reports via `--output results.json`. This reference docu
   "suite": "suite name",                    // Suite name from .eval.yaml
   "skill": "./path/to/SKILL.md",           // Skill path from .eval.yaml
   "defaults": {                             // Resolved defaults (see below)
+    "provider": "anthropic",
     "model": "claude-sonnet-4-5-20250929",
     "max_tokens": 4096,
     "temperature": 0,
@@ -17,6 +18,8 @@ Skillspar produces JSON reports via `--output results.json`. This reference docu
     "pass_threshold": 1.0,
     "max_retries": 2,
     "concurrency": 1,
+    "base_url": "",                         // Present if set
+    "judge_provider": "",                   // Present if set
     "judge_model": "",                      // Present if set
     "system_prompt": ""                     // Present if set
   },

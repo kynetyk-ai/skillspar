@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **OpenAI-compatible provider support**: `provider: openai` in suite defaults (or
+  `--provider openai`) runs suites against any endpoint speaking the OpenAI Chat
+  Completions API — OpenAI, OpenRouter, LiteLLM, Ollama, vLLM — with `base_url`,
+  `api_key_env`, and `judge_provider` configuration. Install via
+  `pip install "skillspar[openai]"`.
+- Cross-provider LLM judging: pin the judge to a fixed provider/model while the
+  model-under-test runs elsewhere (`judge_provider` + `judge_model`).
+- `stop_reason` assertions accept OpenAI vocabulary (`stop`, `tool_calls`, `length`)
+  as aliases for the canonical values.
+- Pricing entries support `cache_semantics: openai` in `SKILLSPAR_PRICING_FILE`.
+- New env vars: `OPENAI_API_KEY`, `SKILLSPAR_PROVIDER`, `SKILLSPAR_BASE_URL`,
+  `SKILLSPAR_JUDGE_PROVIDER`.
+- JSON reports record `provider`, `base_url`, and `judge_provider` for reproducibility.
+
+### Changed
+
+- Internal provider abstraction (`skill_evaluator.providers`): executors and the LLM
+  judge now consume a `Provider` protocol instead of the Anthropic SDK directly.
+- Prompt caching (cache_control breakpoints, cache cost reporting, prefix token
+  threshold warning) is now explicitly Anthropic-only.
+- API-key pre-flight checks are provider-aware and run per-suite after config
+  resolution (also covering `snapshot save`/`diff`).
+
 ## [0.1.0] - 2026-07-08
 
 Initial release.

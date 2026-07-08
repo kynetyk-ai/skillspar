@@ -40,6 +40,21 @@ def _apply_env_defaults(raw: dict) -> dict:
         logger.debug("Injecting SKILLSPAR_JUDGE_MODEL=%s into defaults", env_judge)
         defaults["judge_model"] = env_judge
 
+    env_provider = os.environ.get("SKILLSPAR_PROVIDER")
+    if env_provider and "provider" not in defaults:
+        logger.debug("Injecting SKILLSPAR_PROVIDER=%s into defaults", env_provider)
+        defaults["provider"] = env_provider
+
+    env_base_url = os.environ.get("SKILLSPAR_BASE_URL")
+    if env_base_url and "base_url" not in defaults:
+        logger.debug("Injecting SKILLSPAR_BASE_URL=%s into defaults", env_base_url)
+        defaults["base_url"] = env_base_url
+
+    env_judge_provider = os.environ.get("SKILLSPAR_JUDGE_PROVIDER")
+    if env_judge_provider and "judge_provider" not in defaults:
+        logger.debug("Injecting SKILLSPAR_JUDGE_PROVIDER=%s into defaults", env_judge_provider)
+        defaults["judge_provider"] = env_judge_provider
+
     return raw
 
 
@@ -49,6 +64,8 @@ def resolve_config(
     cli_runs: int | None = None,
     cli_concurrency: int | None = None,
     cli_model: str | None = None,
+    cli_provider: str | None = None,
+    cli_base_url: str | None = None,
     cli_output: str | None = None,
     cli_output_format: str | None = None,
     cli_verbose: bool = False,
@@ -66,7 +83,11 @@ def resolve_config(
 
     config = ResolvedConfig(
         system_prompt=suite_defaults.system_prompt,
+        provider=cli_provider or suite_defaults.provider,  # type: ignore[arg-type]
+        base_url=cli_base_url or suite_defaults.base_url,
+        api_key_env=suite_defaults.api_key_env,
         model=cli_model or suite_defaults.model,
+        judge_provider=suite_defaults.judge_provider,
         judge_model=suite_defaults.judge_model,
         max_tokens=suite_defaults.max_tokens,
         temperature=suite_defaults.temperature,

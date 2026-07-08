@@ -10,6 +10,7 @@ from skill_evaluator.config.schema import (
     ToolResponseConfig,
 )
 from skill_evaluator.engine.multi_turn import MultiTurnExecutionError, MultiTurnExecutor
+from skill_evaluator.providers.anthropic import AnthropicProvider
 from skill_evaluator.tools.matcher import NoMatchError
 
 
@@ -28,7 +29,7 @@ class TestMultiTurnExecutor:
             text="Done!", stop_reason="end_turn"
         )
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
         )
         trace = executor.execute("You are helpful.", _input())
@@ -51,7 +52,7 @@ class TestMultiTurnExecutor:
             ToolResponseConfig(match="*", response={"content": "file content"}),
         ]
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
             tool_responses=tool_responses,
         )
@@ -75,7 +76,7 @@ class TestMultiTurnExecutor:
             ToolResponseConfig(match="*", response={"content": "ok"}),
         ]
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
             tool_responses=tool_responses,
             max_turns=3,
@@ -103,7 +104,7 @@ class TestMultiTurnExecutor:
             ),
         ]
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
             tool_responses=tool_responses,
         )
@@ -124,7 +125,7 @@ class TestMultiTurnExecutor:
             ToolResponseConfig(match="*", response={"content": "matched"}),
         ]
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
             tool_responses=tool_responses,
         )
@@ -139,7 +140,7 @@ class TestMultiTurnExecutor:
         mock_anthropic_client.messages.create.side_effect = APIConnectionError(request=None)
 
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
         )
         with pytest.raises(MultiTurnExecutionError, match="API call failed"):
@@ -152,7 +153,7 @@ class TestMultiTurnExecutor:
         )
         tools = [{"name": "Read", "description": "Read a file", "input_schema": {}}]
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
             tools=tools,
         )
@@ -175,7 +176,7 @@ class TestMultiTurnExecutor:
             ToolResponseConfig(match="*", response={"content": "data"}),
         ]
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
             tool_responses=tool_responses,
         )
@@ -230,7 +231,7 @@ class TestMultiTurnExecutor:
             ),
         ]
         executor = MultiTurnExecutor(
-            client=mock_anthropic_client,
+            provider=AnthropicProvider(mock_anthropic_client),
             config=_config(),
             tool_responses=tool_responses,
         )

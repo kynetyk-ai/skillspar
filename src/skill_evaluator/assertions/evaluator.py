@@ -39,7 +39,7 @@ from skill_evaluator.engine.trace import Trace
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from anthropic import Anthropic
+    from skill_evaluator.providers.base import Provider
 
 _HANDLERS: dict = {
     StopReasonAssertion: check_stop_reason,
@@ -59,7 +59,7 @@ def evaluate_assertions(
     assertions: list[AssertionConfig],
     trace: Trace,
     *,
-    client: Anthropic | None = None,
+    judge_provider: Provider | None = None,
     judge_model: str | None = None,
 ) -> list[AssertionResult]:
     """Evaluate a list of assertions against a trace.
@@ -70,14 +70,14 @@ def evaluate_assertions(
     logger.debug("Evaluating %d assertion(s)", len(assertions))
     results: list[AssertionResult] = []
     for assertion in assertions:
-        # LLM judge requires special handling (needs API client)
+        # LLM judge requires special handling (needs an API provider)
         if isinstance(assertion, LLMJudgeAssertion):
-            if client is not None:
+            if judge_provider is not None:
                 from skill_evaluator.assertions.llm_judge import check_llm_judge
 
                 try:
                     result = check_llm_judge(
-                        assertion, trace, client=client, judge_model=judge_model
+                        assertion, trace, provider=judge_provider, judge_model=judge_model
                     )
                     results.append(result)
                 except Exception as e:

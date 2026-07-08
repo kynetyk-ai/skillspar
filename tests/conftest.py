@@ -143,3 +143,64 @@ def mock_anthropic_client(mock_anthropic_message):
     client = MagicMock()
     client.messages.create.return_value = mock_anthropic_message()
     return client
+
+
+@pytest.fixture
+def anthropic_provider(mock_anthropic_client):
+    """AnthropicProvider wrapping the mock client — drop-in for executor tests."""
+    from skill_evaluator.providers.anthropic import AnthropicProvider
+
+    return AnthropicProvider(mock_anthropic_client)
+
+
+@pytest.fixture
+def mock_openai_completion(sample_usage):
+    """Create a mock OpenAI ChatCompletion response."""
+
+    def _make(text="Hello!", tool_calls=None, finish_reason="stop", cached_tokens=None):
+        completion = MagicMock()
+        message = MagicMock()
+        message.content = text
+        if tool_calls:
+            mocked_calls = []
+            for tc in tool_calls:
+                call = MagicMock()
+                call.id = tc["id"]
+                call.function.name = tc["name"]
+                call.function.arguments = tc["arguments"]  # JSON string
+                mocked_calls.append(call)
+            message.tool_calls = mocked_calls
+        else:
+            message.tool_calls = None
+
+        choice = MagicMock()
+        choice.message = message
+        choice.finish_reason = finish_reason
+        completion.choices = [choice]
+
+        completion.usage = MagicMock()
+        completion.usage.prompt_tokens = sample_usage.input_tokens
+        completion.usage.completion_tokens = sample_usage.output_tokens
+        if cached_tokens is not None:
+            completion.usage.prompt_tokens_details.cached_tokens = cached_tokens
+        else:
+            completion.usage.prompt_tokens_details = None
+        return completion
+
+    return _make
+
+
+@pytest.fixture
+def mock_openai_client(mock_openai_completion):
+    """Create a mock OpenAI client with a pre-configured response."""
+    client = MagicMock()
+    client.chat.completions.create.return_value = mock_openai_completion()
+    return client
+
+
+@pytest.fixture
+def openai_provider(mock_openai_client):
+    """OpenAICompatProvider wrapping the mock client."""
+    from skill_evaluator.providers.openai_compat import OpenAICompatProvider
+
+    return OpenAICompatProvider(mock_openai_client)

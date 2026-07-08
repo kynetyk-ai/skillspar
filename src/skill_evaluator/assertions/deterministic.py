@@ -16,10 +16,19 @@ from skill_evaluator.config.schema import (
 )
 from skill_evaluator.engine.trace import Trace
 
+# OpenAI finish_reason aliases -> canonical (Anthropic-style) stop reasons.
+# Traces always carry canonical values; YAML may use either vocabulary.
+_STOP_REASON_ALIASES = {
+    "stop": "end_turn",
+    "tool_calls": "tool_use",
+    "length": "max_tokens",
+}
+
 
 def check_stop_reason(assertion: StopReasonAssertion, trace: Trace) -> AssertionResult:
     actual = trace.stop_reason
-    if actual == assertion.value:
+    expected = _STOP_REASON_ALIASES.get(assertion.value, assertion.value)
+    if actual == expected:
         return AssertionResult(
             status=AssertionStatus.PASSED,
             assertion_type="stop_reason",

@@ -59,6 +59,7 @@ class JsonReporter:
 
         # Build defaults block
         defaults: dict[str, Any] = {
+            "provider": suite.defaults.provider,
             "model": suite.defaults.model,
             "max_tokens": suite.defaults.max_tokens,
             "temperature": suite.defaults.temperature,
@@ -67,6 +68,10 @@ class JsonReporter:
             "max_retries": suite.defaults.max_retries,
             "concurrency": suite.defaults.concurrency,
         }
+        if suite.defaults.base_url:
+            defaults["base_url"] = suite.defaults.base_url
+        if suite.defaults.judge_provider:
+            defaults["judge_provider"] = suite.defaults.judge_provider
         if suite.defaults.judge_model:
             defaults["judge_model"] = suite.defaults.judge_model
         if suite.defaults.system_prompt:

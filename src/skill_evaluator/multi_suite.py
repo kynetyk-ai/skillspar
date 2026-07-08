@@ -11,6 +11,7 @@ from skill_evaluator.config.loader import ConfigLoadError, load_eval_suite, reso
 from skill_evaluator.config.schema import EvalSuite, ResolvedConfig
 from skill_evaluator.engine.prefix import PrefixLoadError
 from skill_evaluator.executor import execute_suite
+from skill_evaluator.providers import missing_api_key_error
 from skill_evaluator.reporting.console import SuiteResult
 from skill_evaluator.reporting.cost import build_cache_summary, build_cost_summary
 from skill_evaluator.skill.parser import SkillParseError
@@ -84,6 +85,8 @@ def run_suites(
     cli_runs: int | None = None,
     cli_concurrency: int | None = None,
     cli_model: str | None = None,
+    cli_provider: str | None = None,
+    cli_base_url: str | None = None,
     cli_output: str | None = None,
     cli_output_format: str | None = None,
     cli_verbose: bool = False,
@@ -102,6 +105,8 @@ def run_suites(
             cli_runs=cli_runs,
             cli_concurrency=cli_concurrency,
             cli_model=cli_model,
+            cli_provider=cli_provider,
+            cli_base_url=cli_base_url,
             cli_output=cli_output,
             cli_output_format=cli_output_format,
             cli_verbose=cli_verbose,
@@ -118,6 +123,8 @@ def _run_single(
     cli_runs: int | None = None,
     cli_concurrency: int | None = None,
     cli_model: str | None = None,
+    cli_provider: str | None = None,
+    cli_base_url: str | None = None,
     cli_output: str | None = None,
     cli_output_format: str | None = None,
     cli_verbose: bool = False,
@@ -135,11 +142,18 @@ def _run_single(
         cli_runs=cli_runs,
         cli_concurrency=cli_concurrency,
         cli_model=cli_model,
+        cli_provider=cli_provider,
+        cli_base_url=cli_base_url,
         cli_output=cli_output,
         cli_output_format=cli_output_format,
         cli_verbose=cli_verbose,
         cli_filter_pattern=cli_filter_pattern,
     )
+
+    key_error = missing_api_key_error(config.provider, config.api_key_env)
+    if key_error:
+        logger.warning("Missing API key for %s: %s", eval_file, key_error)
+        return SuiteOutcome(eval_file=eval_file, suite=suite, config=config, error=key_error)
 
     # Filter tests by name substring
     if cli_filter_pattern is not None:
@@ -164,7 +178,9 @@ def _run_single(
         return SuiteOutcome(eval_file=eval_file, suite=suite, config=config, error=msg)
 
     cost_summary = build_cost_summary(suite_result, config.model)
-    cache_summary = build_cache_summary(suite_result, config.model)
+    cache_summary = (
+        build_cache_summary(suite_result, config.model) if config.provider == "anthropic" else None
+    )
 
     return SuiteOutcome(
         eval_file=eval_file,

@@ -25,10 +25,13 @@ The plugin provides the `/skillspar:evaluate` skill inside Claude Code:
 
 ### CLI
 
-The CLI runs generated test suites against the Anthropic API:
+The CLI runs generated test suites against the Anthropic API (and, optionally, any OpenAI-compatible endpoint):
 
 ```bash
 pip install git+https://github.com/kynetyk-ai/skillspar.git
+
+# with OpenAI-compatible provider support
+pip install "skillspar[openai] @ git+https://github.com/kynetyk-ai/skillspar.git"
 ```
 
 For development mode (from a local clone):
@@ -127,7 +130,18 @@ For full CLI options, YAML schema, and assertion types, see the [CLI Reference](
 
 **Why declarative YAML over programmatic tests.** YAML suites are reproducible, diffable, and versionable. You can review a test suite in a PR, diff it against a snapshot, or hand it to someone who has never seen the framework. Programmatic test frameworks offer more flexibility but make it harder to reason about what's being tested and whether it changed.
 
-**Extensibility to other providers and agents.** Skillspar currently targets Anthropic models via the Messages API, but the underlying pattern — injecting instructional text into model context to specialize behavior — is not Anthropic-specific. Any agent compatible with the [Agent Skills open standard](https://agentskills.io/home) that follows a similar skill injection paradigm (Windsurf, Cursor, etc.) could be tested with the same approach. The engine would need a different API adapter and possibly different message assembly, but the declarative suite format, assertion types, and baseline methodology are provider-agnostic. If you're interested in extending Skillspar to another provider or agent — fork it, try it, and open a PR.
+**Other providers.** Skillspar defaults to Anthropic models, and also supports any endpoint speaking the OpenAI Chat Completions API — OpenAI, OpenRouter, LiteLLM, Ollama, vLLM — via `provider: openai` and `base_url` in the suite defaults (install with `pip install "skillspar[openai]"`). This lets you measure whether a skill's steer *holds across models*:
+
+```yaml
+defaults:
+  provider: openai
+  base_url: "http://localhost:11434/v1"    # Ollama example
+  model: "llama3.1"
+  judge_provider: anthropic                 # judge stays fixed for fair comparison
+  judge_model: "claude-sonnet-4-5-20250929"
+```
+
+The internal trace model, assertion types, and baseline methodology are fully provider-agnostic; prompt caching and cache cost reporting remain Anthropic-only. See [Providers](cli-reference.md#providers) for details and caveats. The same design would extend to agent platforms following the [Agent Skills open standard](https://agentskills.io/home) (Windsurf, Cursor, etc.) — if you're interested in extending Skillspar further, fork it, try it, and open a PR.
 
 ## Frequently Asked Questions
 
@@ -147,7 +161,7 @@ A tool call followed by a confirmation message counts as two turns, not one. If 
 This is the intended stress test — context dilution is real. If the skill can't hold up, try clearer test inputs that unambiguously signal the skill's domain. You can also test with `skill_position: bottom` to place the skill closer to the input. If it still fails, the skill text may need strengthening.
 
 **How much does a run cost?**
-Each test makes one or more API calls (skill run + optional baseline + optional judge). Multi-turn tests and reliability runs (`runs: 5`) multiply this. Use `enable_caching: true` when running the same prefix across multiple tests — prompt caching reduces cost for shared prefixes. Check your Anthropic dashboard for exact usage.
+Each test makes one or more API calls (skill run + optional baseline + optional judge). Multi-turn tests and reliability runs (`runs: 5`) multiply this. On Anthropic, use `enable_caching: true` when running the same prefix across multiple tests — prompt caching reduces cost for shared prefixes (caching and cache cost reporting are Anthropic-only). Check your provider dashboard for exact usage.
 
 **Does Skillspar test automatic skill loading?**
 No. Skillspar tests the skill's behavioral steer — what happens when the skill is active — not whether the agent loads the skill automatically. Automatic skill loading (matching a user query to the right skill file) is in our experience the least reliable aspect of skill systems, and it varies across agents. If you want a skill to be used reliably, instruct the agent to use it unambiguously (e.g., `/skillspar:evaluate` or 'Activate <my-skill>, then ...') rather than relying on automatic activation. Skillspar assumes the skill is already loaded and focuses on measuring what it does from there.

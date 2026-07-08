@@ -6,8 +6,12 @@ All defaults can be overridden in the `defaults` block of your `.eval.yaml` or p
 
 | Field | Default | Description |
 |-------|---------|-------------|
+| `provider` | `anthropic` | API provider: `anthropic` or `openai` (OpenAI-compatible endpoints) |
+| `base_url` | none | API base URL override (OpenAI-compatible endpoints) |
+| `api_key_env` | none | Custom env var name for the API key |
 | `model` | `claude-sonnet-4-5-20250929` | Model for test runs |
-| `judge_model` | `""` (same as `model`) | Model for `llm_judge` assertions |
+| `judge_provider` | none (same as `provider`) | Provider for `llm_judge` assertions |
+| `judge_model` | `""` (same as `model`) | Model for `llm_judge` assertions; required if `judge_provider` differs |
 | `system_prompt` | `""` | System prompt providing a constant persona for both skill and baseline runs |
 | `max_tokens` | `4096` | Max tokens per API response |
 | `temperature` | `0` | Sampling temperature |
@@ -36,6 +40,8 @@ skillspar run [OPTIONS] EVAL_FILES...
 | `--format json\|junit` | Report format (default: inferred from extension, or json) |
 | `--filter PATTERN` | Only run tests whose name contains this substring |
 | `--model MODEL` | Override the suite default model |
+| `--provider anthropic\|openai` | Override the suite default provider |
+| `--base-url URL` | Override the API base URL (OpenAI-compatible endpoints) |
 | `--verbose` | Show per-assertion details in console output |
 | `--log-level LEVEL` | Logging verbosity: DEBUG, INFO, WARNING, ERROR |
 
@@ -97,5 +103,6 @@ In multi-suite runs, exit code 2 takes priority over 1.
 
 ## Environment
 
-- `ANTHROPIC_API_KEY` — required. Set in environment or a `.env` file in the working directory.
+- `ANTHROPIC_API_KEY` — required for the default `anthropic` provider. Set in environment or a `.env` file in the working directory.
+- `OPENAI_API_KEY` — required instead when `provider: openai` is used (or the custom var named by `api_key_env`).
 - Reports are written to the path specified by `--output`. Without `--output`, results are only printed to console.

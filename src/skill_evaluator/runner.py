@@ -34,6 +34,7 @@ from skill_evaluator.engine.prefix import (
     load_prefix_messages,
 )
 from skill_evaluator.engine.single_turn import ExecutionError, SingleTurnExecutor
+from skill_evaluator.providers import get_provider
 from skill_evaluator.reporting.console import SuiteResult, TestResult, TestRunGroup
 from skill_evaluator.skill.parser import parse_skill
 from skill_evaluator.tools.matcher import NoMatchError
@@ -67,7 +68,21 @@ class SuiteRunner:
         if config is None:
             config = ResolvedConfig(**suite.defaults.model_dump())
         self.config = config
-        self.client = client or Anthropic(max_retries=self.config.max_retries)
+        self.provider = get_provider(
+            config.provider,
+            client=client,
+            base_url=config.base_url,
+            api_key_env=config.api_key_env,
+            max_retries=config.max_retries,
+        )
+        judge_provider_name = config.judge_provider or config.provider
+        if judge_provider_name == config.provider:
+            self.judge_provider = self.provider
+        else:
+            self.judge_provider = get_provider(
+                judge_provider_name,
+                max_retries=config.max_retries,
+            )
 
     def _effective_runs(self, test: SingleTurnTest | MultiTurnTest) -> int:
         return test.runs if test.runs is not None else self.config.runs
@@ -77,16 +92,20 @@ class SuiteRunner:
             test.pass_threshold if test.pass_threshold is not None else self.config.pass_threshold
         )
 
+    def _caching_active(self) -> bool:
+        """Prompt caching uses Anthropic cache_control breakpoints — Anthropic only."""
+        return self.config.enable_caching and self.config.provider == "anthropic"
+
     def _build_system_prompt(self) -> str | list[dict]:
         """Build the system prompt, optionally as structured content with cache_control."""
         prompt = self.config.system_prompt
-        if self.config.enable_caching and prompt:
+        if self._caching_active() and prompt:
             return [{"type": "text", "text": prompt, "cache_control": {"type": "ephemeral"}}]
         return prompt
 
     def _skill_cache_control(self) -> dict[str, str] | None:
         """Return cache_control for the skill message when a prefix is present and caching is on."""
-        if not self.config.enable_caching or self.suite.conversation_prefix is None:
+        if not self._caching_active() or self.suite.conversation_prefix is None:
             return None
         return {"type": "ephemeral"}
 
@@ -129,7 +148,7 @@ class SuiteRunner:
             # get independent cache_control markers — the API supports
             # multiple breakpoints, so consecutive skill runs cache both
             # and baseline runs still hit the prefix cache.
-            prefix_caching = self.config.enable_caching
+            prefix_caching = self._caching_active()
             try:
                 self._prefix_messages = load_prefix_messages(
                     self.eval_file,
@@ -137,7 +156,7 @@ class SuiteRunner:
                     enable_caching=prefix_caching,
                 )
                 token_est = estimate_prefix_tokens(self._prefix_messages)
-                if token_est < MINIMUM_CACHE_TOKEN_THRESHOLD:
+                if prefix_caching and token_est < MINIMUM_CACHE_TOKEN_THRESHOLD:
                     logger.warning(
                         "Prefix estimated at ~%d tokens, below minimum cache threshold of %d. "
                         "Caching may not activate.",
@@ -250,7 +269,7 @@ class SuiteRunner:
         """Execute a single-turn test and evaluate its assertions."""
 
         def make_executor(system_prompt, input_config):
-            executor = SingleTurnExecutor(self.client, self.config)
+            executor = SingleTurnExecutor(self.provider, self.config)
             return executor.execute(system_prompt, input_config, tools=suite_tools or None)
 
         return self._run_test(test, skill_body, suite_tools, make_executor)
@@ -265,7 +284,7 @@ class SuiteRunner:
 
         def make_executor(system_prompt, input_config):
             executor = MultiTurnExecutor(
-                client=self.client,
+                provider=self.provider,
                 config=self.config,
                 tools=suite_tools or None,
                 tool_responses=test.tool_responses,
@@ -334,7 +353,7 @@ class SuiteRunner:
         assertion_results = evaluate_assertions(
             test.assertions,
             trace,
-            client=self.client,
+            judge_provider=self.judge_provider,
             judge_model=self.config.judge_model or self.config.model,
         )
         return TestResult(

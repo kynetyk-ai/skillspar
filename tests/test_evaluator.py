@@ -8,6 +8,7 @@ from skill_evaluator.config.schema import (
     StopReasonAssertion,
     ToolSequenceAssertion,
 )
+from skill_evaluator.providers.anthropic import AnthropicProvider
 
 
 class TestEvaluateAssertions:
@@ -33,7 +34,7 @@ class TestEvaluateAssertions:
         assertions = [
             LLMJudgeAssertion(type="llm_judge", criteria="Is the response friendly?"),
         ]
-        results = evaluate_assertions(assertions, simple_text_trace, client=None)
+        results = evaluate_assertions(assertions, simple_text_trace, judge_provider=None)
         assert results[0].status == AssertionStatus.SKIPPED
 
     def test_llm_judge_dispatches(
@@ -50,7 +51,7 @@ class TestEvaluateAssertions:
         results = evaluate_assertions(
             assertions,
             simple_text_trace,
-            client=mock_anthropic_client,
+            judge_provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
         assert len(results) == 1
@@ -70,7 +71,7 @@ class TestEvaluateAssertions:
         results = evaluate_assertions(
             assertions,
             simple_text_trace,
-            client=mock_anthropic_client,
+            judge_provider=AnthropicProvider(mock_anthropic_client),
             judge_model="claude-haiku-3",
         )
         assert len(results) == 1

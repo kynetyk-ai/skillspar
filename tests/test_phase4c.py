@@ -500,8 +500,23 @@ class TestExitCodes:
     def test_snapshot_save_missing_api_key_exits_2(self, monkeypatch, tmp_path):
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
+        skill_file = tmp_path / "SKILL.md"
+        skill_file.write_text("---\nname: test\ndescription: test\n---\nBody")
         eval_file = tmp_path / "test.eval.yaml"
-        eval_file.write_text("placeholder")
+        eval_file.write_text(
+            "suite: test\n"
+            "skill: ./SKILL.md\n"
+            "tests:\n"
+            "  - name: t\n"
+            "    type: single_turn\n"
+            "    input:\n"
+            "      messages:\n"
+            "        - role: user\n"
+            "          content: hi\n"
+            "    assertions:\n"
+            "      - type: output_contains\n"
+            "        value: hi\n"
+        )
 
         runner = CliRunner()
         with runner.isolated_filesystem(temp_dir=tmp_path):

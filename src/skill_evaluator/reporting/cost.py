@@ -12,10 +12,13 @@ from skill_evaluator.engine.trace import TokenUsage
 logger = logging.getLogger(__name__)
 
 # Pricing per million tokens (USD).
-# Format: model_id -> {input, output, cache_write_multiplier, cache_read_multiplier}
-# cache_write cost = input * cache_write_multiplier
-# cache_read cost  = input * cache_read_multiplier
-_BUILTIN_PRICING: dict[str, dict[str, float]] = {
+# Format: model_id -> {input, output, cache_write_multiplier, cache_read_multiplier,
+#                      cache_semantics ("anthropic" default, or "openai")}
+# anthropic semantics: input_tokens EXCLUDE cache tokens;
+#   cache_write cost = input * cache_write_multiplier, cache_read = input * cache_read_multiplier
+# openai semantics: input_tokens INCLUDE cached tokens; cache writes are free;
+#   cached reads are billed at input * cache_read_multiplier (typically 0.5)
+_BUILTIN_PRICING: dict[str, dict[str, Any]] = {
     "claude-sonnet-4-5-20250929": {
         "input": 3.00,
         "output": 15.00,
@@ -37,7 +40,7 @@ _BUILTIN_PRICING: dict[str, dict[str, float]] = {
 }
 
 
-def _load_pricing() -> dict[str, dict[str, float]]:
+def _load_pricing() -> dict[str, dict[str, Any]]:
     """Load pricing table, optionally extended/overridden by env var."""
     pricing = dict(_BUILTIN_PRICING)
     pricing_file = os.environ.get("SKILLSPAR_PRICING_FILE")
@@ -71,15 +74,19 @@ def estimate_cost(usage: TokenUsage, model: str) -> float | None:
     cache_write_mult = model_pricing.get("cache_write_multiplier", 1.25)
     cache_read_mult = model_pricing.get("cache_read_multiplier", 0.1)
 
-    cost = 0.0
-    # Standard input tokens (non-cache)
+    cost = usage.output_tokens * per_m_output / 1_000_000
+
+    if model_pricing.get("cache_semantics") == "openai":
+        # Cached tokens are a discounted subset of input_tokens; writes are free.
+        cached = usage.cache_read_input_tokens or 0
+        cost += max(usage.input_tokens - cached, 0) * per_m_input / 1_000_000
+        cost += cached * per_m_input * cache_read_mult / 1_000_000
+        return cost
+
+    # Anthropic semantics: cache tokens are billed on top of input_tokens.
     cost += usage.input_tokens * per_m_input / 1_000_000
-    # Output tokens
-    cost += usage.output_tokens * per_m_output / 1_000_000
-    # Cache write tokens
     if usage.cache_creation_input_tokens:
         cost += usage.cache_creation_input_tokens * per_m_input * cache_write_mult / 1_000_000
-    # Cache read tokens
     if usage.cache_read_input_tokens:
         cost += usage.cache_read_input_tokens * per_m_input * cache_read_mult / 1_000_000
 
