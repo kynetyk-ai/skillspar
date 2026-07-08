@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `stop_reason` assertions accept OpenAI vocabulary (`stop`, `tool_calls`, `length`)
   as aliases for the canonical values.
 - Pricing entries support `cache_semantics: openai` in `SKILLSPAR_PRICING_FILE`.
+- **Cost estimation is now opt-in**: the builtin Claude pricing table is removed, so
+  reports omit dollar figures unless `SKILLSPAR_PRICING_FILE` supplies the user's own
+  pricing assumptions (token counts are always reported). Avoids silently-stale
+  hardcoded prices and meaningless costs on local/gateway endpoints.
 - New env vars: `OPENAI_API_KEY`, `SKILLSPAR_PROVIDER`, `SKILLSPAR_BASE_URL`,
   `SKILLSPAR_JUDGE_PROVIDER`.
 - JSON reports record `provider`, `base_url`, and `judge_provider` for reproducibility.

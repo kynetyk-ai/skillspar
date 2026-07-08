@@ -6,6 +6,7 @@ Full reference for `.eval.yaml` test suite configuration, CLI commands, and resu
 
 - [Configuration Defaults](#configuration-defaults)
 - [Environment Variables](#environment-variables)
+- [Cost Estimation](#cost-estimation)
 - [Test Suite Format](#test-suite-format)
 - [Baseline Testing](#baseline-testing)
 - [Mid-Conversation Testing](#mid-conversation-testing)
@@ -58,7 +59,7 @@ Provider notes:
 
 - **Stop reasons** are normalized — write `stop_reason` assertions with either vocabulary (`end_turn`/`stop`, `tool_use`/`tool_calls`, `max_tokens`/`length`).
 - **Prompt caching** (`enable_caching`, cache cost reporting) is Anthropic-only; OpenAI-compatible endpoints cache automatically and `cache_control` markers are stripped.
-- **Cost estimation** covers Claude models out of the box; add entries for other models via `SKILLSPAR_PRICING_FILE` (set `"cache_semantics": "openai"` on those entries). Unknown models report no cost rather than erroring.
+- **Cost estimation** is opt-in for every provider — see [Cost Estimation](#cost-estimation). Models without a pricing entry report no cost rather than erroring.
 - The adapter sends `max_tokens` (not `max_completion_tokens`) for widest compatible-server support; the very newest OpenAI models may reject it.
 
 ## Environment Variables
@@ -76,10 +77,45 @@ Skillspar reads a `.env` file at the working directory (via `python-dotenv`) and
 | `SKILLSPAR_JUDGE_PROVIDER` | no | Default judge provider when the suite doesn't set one |
 | `SKILLSPAR_OUTPUT` | no | Directory for auto-named JSON reports; the `--output` flag overrides with an exact path |
 | `SKILLSPAR_LOG_LEVEL` | no | Logging verbosity: `DEBUG`, `INFO`, `WARNING` (default), `ERROR` |
-| `SKILLSPAR_PRICING_FILE` | no | Path to a JSON file of model pricing entries, merged over the builtin table. Each entry: `{"<model-id>": {"input": <$/Mtok>, "output": <$/Mtok>, "cache_write_multiplier": 1.25, "cache_read_multiplier": 0.1}}` |
+| `SKILLSPAR_PRICING_FILE` | no | Path to a JSON file of model pricing entries — enables cost estimation, which is otherwise off. See [Cost Estimation](#cost-estimation) |
 | `SKILLSPAR_SNAPSHOT_DIR` | no | Snapshot storage directory (default `.skillspar/snapshots/`); the `--snapshot-dir` flag overrides |
 
 Precedence for values that appear in multiple places: CLI flags > `.eval.yaml` > environment variables > builtin defaults.
+
+## Cost Estimation
+
+Cost reporting is **opt-in**. Skillspar ships no pricing data — model prices change frequently and often don't apply at all (local endpoints, gateway routing, negotiated rates) — so by default reports simply omit cost and cache-savings figures. Token counts are always reported; they come from the API, not the pricing table.
+
+To enable cost estimation, set `SKILLSPAR_PRICING_FILE` to a JSON file encoding your own pricing assumptions in USD per million tokens:
+
+```json
+{
+  "claude-sonnet-4-5-20250929": {
+    "input": 3.00,
+    "output": 15.00,
+    "cache_write_multiplier": 1.25,
+    "cache_read_multiplier": 0.1
+  },
+  "gpt-4.1": {
+    "input": 2.00,
+    "output": 8.00,
+    "cache_read_multiplier": 0.5,
+    "cache_semantics": "openai"
+  }
+}
+```
+
+Entry fields:
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `input` | required | USD per million input tokens |
+| `output` | required | USD per million output tokens |
+| `cache_write_multiplier` | `1.25` | Cache-write cost as a multiple of the input rate (`anthropic` semantics only) |
+| `cache_read_multiplier` | `0.1` | Cache-read cost as a multiple of the input rate |
+| `cache_semantics` | `"anthropic"` | `"anthropic"`: cache tokens are billed on top of `input_tokens`. `"openai"`: cached tokens are a discounted subset of `input_tokens`; writes are free |
+
+Costs are estimates computed from your assumptions, not billing data — check your provider dashboard for actual spend. Note that `llm_judge` assertion calls are not included in cost totals. Models without a pricing entry log a warning and report no cost.
 
 ## Test Suite Format
 
@@ -328,7 +364,7 @@ Multi-Suite Summary
 Total cost: $1.20
 ```
 
-A failure in one suite does not abort others.
+A failure in one suite does not abort others. Cost columns appear only when [cost estimation](#cost-estimation) is enabled.
 
 ## Watch Mode
 
