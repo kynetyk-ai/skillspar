@@ -57,4 +57,4 @@ When the version in `pyproject.toml` changes, update `.claude-plugin/plugin.json
 
 ## Roadmap
 
-See ROADMAP.md. Phases 1–4G complete. Next: Phase 5A (internal launch).
+See ROADMAP.md. Phases 1–5A complete. Next: Phase 5B (release readiness), then 5C (OpenAI-compatible providers) and 5D (public launch).

@@ -221,50 +221,122 @@ and contribution workflow. Install via GitHub repo (`pip install git+...`).
 **Milestone**: CI is green, error messages are user-friendly, and the team has a clean
 contribution workflow via GitHub. ✅
 
-## Phase 5B: Dogfooding — Skill Eval in CI
+## Phase 5B: Release Readiness
 
-Test the `/skillspar:evaluate` skill with Skillspar's own framework, wired into GitHub Actions.
-Demonstrates the CI/CD integration story with a real skill and catches regressions when the
-skill package changes.
+Fix the gaps found in the pre-launch audit (July 2026): CI has never run and would fail,
+and the community files planned for launch don't exist yet.
 
-### Eval suite
-- [ ] Develop eval suite for `/skillspar:evaluate` using the skill itself (interactive)
-- [ ] Validate suite stability (2–3 iterations, reliable skill vs baseline separation)
+### CI fixes
+- [ ] Make tests environment-independent: autouse fixture in `tests/conftest.py` that sets a
+      dummy `ANTHROPIC_API_KEY` (16 CLI tests currently fail without a real key in the env,
+      and `.github/workflows/ci.yml` sets none)
+- [ ] Add `develop` to CI push triggers (workflow currently only fires on `main` pushes and
+      PRs, so it has never executed)
+- [ ] Verify a green Actions run on GitHub
 
-### CI workflow
-- [ ] GitHub Actions workflow (`.github/workflows/skill-eval.yml`): runs eval suite on
-      `skills/evaluate/**` path changes, with `workflow_dispatch` for manual triggers
-- [ ] `ANTHROPIC_API_KEY` repository secret
-- [ ] Artifact upload for eval results (JSON report + saved responses)
-
-### Documentation
-- [ ] CI/CD integration section in `docs/user-guide.md` referencing this repo's workflow
-      as a real-world example
-
-**Milestone**: Changes to the `/skillspar:evaluate` skill package trigger an automated eval
-run in CI, and the workflow serves as a reference implementation for users.
-
-## Phase 5C: Open Source Launch (Future)
-
-PyPI distribution, community files, and public release readiness.
-
-### Distribution
-- [ ] PyPI packaging and distribution (`hatch build` + `twine upload` or trusted publisher)
-- [ ] GitHub release automation: tag-triggered workflow to build and publish to PyPI
-- [ ] Create clean public repo with squashed history for a fresh start at launch (no dev back-and-forth in git log)
-
-### Packaging metadata (`pyproject.toml`)
-- [ ] Add `[project.classifiers]` (Development Status, License, Python versions, Topic)
-
-### Community files
-- [ ] `CHANGELOG.md`
+### Community files (pulled forward from the old Phase 5C)
+- [ ] `CHANGELOG.md` (0.1.0 entry)
 - [ ] `CONTRIBUTING.md` (dev setup, testing, PR workflow, code style expectations)
 - [ ] `CODE_OF_CONDUCT.md` (Contributor Covenant)
 - [ ] `SECURITY.md` (vulnerability reporting policy)
 - [ ] README contributing section (link to `CONTRIBUTING.md`, community guidelines summary)
 
-**Milestone**: `pip install skillspar` works from PyPI, community files are in place, and the
-project is ready for public contributions.
+### Metadata & doc consistency
+- [ ] Add `[project.classifiers]` to `pyproject.toml` (Development Status, License, Python
+      versions, Topic)
+- [ ] Fix stale CLAUDE.md roadmap line (says "Next: Phase 5A"; 5A is complete)
+- [ ] Set GitHub repo description and topics
+
+**Milestone**: CI is green on GitHub, community files exist, and metadata is
+launch-ready.
+
+## Phase 5C: OpenAI-Compatible Provider Support
+
+Add a thin provider adapter so suites can run against any OpenAI-compatible endpoint
+(OpenAI, OpenRouter, LiteLLM, Ollama, vLLM) alongside Anthropic. The internal
+`Trace`/`Turn`/`ToolCall` model is already provider-neutral and all assertions consume it,
+so the work is confined to the API boundary: three `messages.create()` call sites, the
+message builder, and the response parser. This also sets up Phase 6's A/B model comparison
+as a *cross-vendor* story — "does the steer hold on other models?"
+
+### Provider abstraction
+- [ ] `providers/base.py`: protocol with
+      `create_message(model, system, messages, tools, max_tokens, temperature)` returning a
+      normalized response (text, tool calls, normalized stop reason
+      `end_turn | tool_use | max_tokens`, usage)
+- [ ] `providers/anthropic.py`: current behavior, passes `cache_control` through
+- [ ] `providers/openai_compat.py`: translate canonical (Anthropic-format) messages both
+      directions — system param → system message, `tool_use`/`tool_result` blocks →
+      `tool_calls` + `role: "tool"` messages, `input_schema` → `function.parameters`;
+      map `finish_reason` and usage fields; strip `cache_control` markers; parse tool-call
+      argument JSON strings
+- [ ] `openai` SDK as optional extra (`pip install skillspar[openai]`) with configurable
+      `base_url` — one adapter covers all OpenAI-compatible endpoints
+
+### Config & CLI
+- [ ] `provider`, `base_url`, `api_key_env` fields on `SuiteDefaults`/`ResolvedConfig`
+- [ ] `judge_provider` so the judge can stay on Claude while the model-under-test runs
+      elsewhere (cross-provider comparison needs a fixed judge)
+- [ ] Provider-aware API key pre-flight check in the CLI
+- [ ] Normalize `stop_reason` assertion values (accept canonical values, keep Anthropic
+      strings as aliases for backward compatibility)
+
+### Reporting & degradation
+- [ ] Extend pricing table schema with per-provider cache semantics (OpenAI: 0.5× cached
+      reads, free writes); unknown models degrade to "cost unavailable" rather than erroring
+- [ ] Cache reporting and prefix token-threshold warning become Anthropic-conditional
+
+### Documentation (per CLAUDE.md sync rules)
+- [ ] Update `skills/evaluate/references/eval-schema-reference.md` and SKILL.md for new
+      provider fields
+- [ ] `docs/cli-reference.md` and `docs/user-guide.md` provider sections
+- [ ] README: update "Anthropic models" scoping language
+- [ ] Adapter unit tests (suite is fully mocked — no API budget needed)
+
+**Milestone**: `skillspar run suite.yaml` executes against an OpenAI-compatible endpoint
+with tool-use tests and baseline comparison working, judge pinned to a fixed model.
+
+## Phase 5D: Public Launch
+
+Flip the repo public. Install paths (`pip install git+...`, plugin marketplace add) already
+work against the GitHub repo — PyPI is deferred to post-launch.
+
+- [ ] Decide history strategy: squash `main` to a single "Initial public release" commit
+      (orphan branch + force push keeps the repo URL, so install/marketplace links stay
+      valid) — or keep history after a secrets scan
+- [ ] Tag `v0.1.0` and create a GitHub Release
+- [ ] Make the repo public
+- [ ] Smoke-test both install paths from a clean environment
+      (`pip install git+https://github.com/kynetyk-ai/skillspar.git` and
+      `/plugin marketplace add kynetyk-ai/skillspar`)
+
+**Milestone**: The repo is public, tagged, and both documented install paths work from a
+clean environment.
+
+## Phase 5E: Post-Launch — PyPI & Dogfooding
+
+### PyPI distribution
+- [ ] PyPI packaging and distribution (`hatch build` + trusted publisher)
+- [ ] GitHub release automation: tag-triggered workflow to build and publish to PyPI
+- [ ] Update README install instructions to `pip install skillspar`
+
+### Dogfooding — skill eval in CI
+Test the `/skillspar:evaluate` skill with Skillspar's own framework, wired into GitHub
+Actions. Demonstrates the CI/CD integration story with a real skill and catches regressions
+when the skill package changes.
+
+- [ ] Develop eval suite for `/skillspar:evaluate` using the skill itself (interactive)
+- [ ] Validate suite stability (2–3 iterations, reliable skill vs baseline separation)
+- [ ] GitHub Actions workflow (`.github/workflows/skill-eval.yml`): runs eval suite on
+      `skills/evaluate/**` path changes, with `workflow_dispatch` for manual triggers
+- [ ] `ANTHROPIC_API_KEY` repository secret
+- [ ] Artifact upload for eval results (JSON report + saved responses)
+- [ ] CI/CD integration section in `docs/user-guide.md` referencing this repo's workflow
+      as a real-world example
+
+**Milestone**: `pip install skillspar` works from PyPI, and changes to the
+`/skillspar:evaluate` skill package trigger an automated eval run in CI that serves as a
+reference implementation for users.
 
 ## Phase 6: Analytics + Advanced (Future)
 
@@ -273,7 +345,8 @@ project is ready for public contributions.
 - [x] Steer strength metric — quantify the delta between skill and baseline pass rates — *subsumed by Phase 4D (steer erosion detection, pass_rate_delta)*
 - [x] Snapshot testing (golden trace diffing for tool call sequences) — *subsumed by Phase 4D (stored baselines & temporal diffing)*
 - [x] Flakiness detection (run N times, report variance) — *done in Phase 1 (repeated runs + pass_threshold)*
-- [ ] A/B model comparison (same skill across model versions — does the steer hold?)
+- [ ] A/B model comparison (same skill across model versions — and, building on Phase 5C,
+      across providers — does the steer hold?)
 - [ ] Response caching for faster re-runs
 - [x] Centralized config (consolidate env vars, CLI flags, YAML defaults, and .env into a unified config layer)
 - [x] Structured logging (replace ad-hoc output with configurable log levels for debugging, execution traces, and CI diagnostics)
